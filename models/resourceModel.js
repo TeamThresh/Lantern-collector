@@ -18,7 +18,9 @@ exports.saveResourceDump = function(obj, callback) {
                 // Sub resource Model (each datas)
                 ResourceData.resourceDataParcing(arr)
                     .then(function(data) {
-                        resourceModel.data.push(data);
+                        if (data) {
+                            resourceModel.data.push(data);
+                        }
 
                         if (index == obj.data.length-1) {
                             // Save res datas when sub resource include

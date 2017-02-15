@@ -25,6 +25,11 @@ module.exports.resourceDataParcing = function(obj) {
 	        case "request" :
 				resData = new ResourceDataRequest(obj, SchemaSet.requestSchema);
 	            break;
+            case "render" :
+            	resData = new ResourceDataRender(obj, SchemaSet.renderSchema);
+            	break;
+        	default:
+        		return resolved();
 	    }
 		
 		var returnData = resData.setMongooseModel(obj);
@@ -90,6 +95,16 @@ class ResourceDataClick extends ResourceData {
 	}
 }
 
+class ResourceDataRender extends ResourceData {
+	constructor(obj, set) {
+		super(obj, set);
+	}
+
+	setMongooseModel(data) {
+		return mongoose.model('resourceRenderSchema', resourceRenderSchema)(data);
+	}
+}
+
 var resourceDataSchema = new Schema(SchemaSet.resSchema);
 
 var resourceCrashSchema = new Schema(SchemaSet.crashSchema);
@@ -97,3 +112,5 @@ var resourceCrashSchema = new Schema(SchemaSet.crashSchema);
 var resourceRequestSchema = new Schema(SchemaSet.requestSchema);
 
 var resourceClickSchema = new Schema(SchemaSet.clickSchema);
+
+var resourceRenderSchema = new Schema(SchemaSet.renderSchema);
