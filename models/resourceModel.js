@@ -14,15 +14,16 @@ exports.saveResourceDump = function(obj, callback) {
     // Main resource Model
     ResourceHeader.resourceParcing(obj)
         .then(function(resourceModel) {
-            obj.data.forEach(function(arr, index) {
+            var isFail = false;
+            obj.data.forEach(function(res, index, arr) {
                 // Sub resource Model (each datas)
-                ResourceData.resourceDataParcing(arr)
+                ResourceData.resourceDataParcing(res)
                     .then(function(data) {
                         if (data) {
                             resourceModel.data.push(data);
                         }
 
-                        if (index == obj.data.length-1) {
+                        if (index == arr.length-1) {
                             // Save res datas when sub resource include
                             resourceModel.save(function(err){
                                 if(err){
@@ -30,15 +31,19 @@ exports.saveResourceDump = function(obj, callback) {
                                     var error = Error(err);
                                     error.status = 500;
                                     console.error(error);
-                                    return callback(500);
+                                    isFail = err;
                                 }
-                                return callback(null, resourceModel._id);
+                                return callback(isFail, resourceModel._id);
                             });
                         }
                     })
                     .catch(function(err) {
                         // parameter error
-                        return callback(err);
+                        if (index == arr.length-1) {
+                            return callback(err);
+                        } else {
+                            return isFail = err;
+                        }
                     });
             });
         })
@@ -47,4 +52,3 @@ exports.saveResourceDump = function(obj, callback) {
             return callback(err);
         })
 };
-
