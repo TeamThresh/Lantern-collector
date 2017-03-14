@@ -33,7 +33,7 @@ exports.saveResourceDump = function(obj, callback) {
                                     console.error(error);
                                     isFail = err;
                                 }
-                                return callback(isFail, resourceModel._id);
+                                return callback(isFail, resourceModel);
                             });
                         }
                     })

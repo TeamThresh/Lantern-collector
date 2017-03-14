@@ -3,6 +3,7 @@
  */
 
 var resourceModel = require('../models/resourceModel');
+var analyzerModel = require('../models/analyzerModel');
 
 /**
  *
@@ -19,15 +20,22 @@ module.exports = {
         };
 
         // TODO access_token 으로 User 인증
-        resourceModel.saveResourceDump(data.dump, function(err, id) {
+        // TODO validation 파싱을 controller로 뺄 것
+        resourceModel.saveResourceDump(data.dump, function(err, resource) {
             if (err) {
-                return err instanceof Number ? next(500) : next(err);
+                return err instanceof Number ? next(err) : next(500);
             }
-
-            res.statusCode = 200;
-            return res.json({
-                msg: "complete"
-            });
+            analyzerModel.saveAnalysisDump(
+                resource, 
+                function(err) {
+                    if (err) {
+                        return err instanceof Number ? next(err) : next(500);
+                    }
+                    res.statusCode = 200;
+                    return res.json({
+                        msg: "complete"
+                    });
+                });
         });
     }
 };
