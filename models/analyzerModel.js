@@ -164,12 +164,12 @@ var getActivityKey = function(context, header) {
             } else if (rows.length == 0) {
             	newActivity(context, header)
             		.then(function(result) {
-            			key = result
+            			key = result;
             			return resolved(key);
             		})
             		.catch(rejected);
             } else {
-            	key = rows.insertId;
+            	key = rows[0].act_id;
             	return resolved(key);
             }
         });
