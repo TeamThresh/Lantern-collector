@@ -25,17 +25,24 @@ module.exports = {
             if (err) {
                 return err instanceof Number ? next(err) : next(500);
             }
-            analyzerModel.saveAnalysisDump(
-                resource, 
-                function(err) {
-                    if (err) {
-                        return err instanceof Number ? next(err) : next(500);
-                    }
-                    res.statusCode = 200;
-                    return res.json({
-                        msg: "complete"
+            if (resource.data.length > 0) {
+                analyzerModel.saveAnalysisDump(
+                    resource, 
+                    function(err) {
+                        if (err) {
+                            return err instanceof Number ? next(err) : next(500);
+                        }
+                        res.statusCode = 200;
+                        return res.json({
+                            msg: "complete"
+                        });
                     });
+            } else {
+                res.statusCode = 200;
+                return res.json({
+                    msg: "complete"
                 });
+            }
         });
     }
 };

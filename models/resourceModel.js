@@ -15,37 +15,41 @@ exports.saveResourceDump = function(obj, callback) {
     ResourceHeader.resourceParcing(obj)
         .then(function(resourceModel) {
             var isFail = false;
-            obj.data.forEach(function(res, index, arr) {
-                // Sub resource Model (each datas)
-                ResourceData.resourceDataParcing(res)
-                    .then(function(data) {
-                        if (data) {
-                            resourceModel.data.push(data);
-                        }
+            if (obj.data.length > 0) {
+                obj.data.forEach(function(res, index, arr) {
+                    // Sub resource Model (each datas)
+                    ResourceData.resourceDataParcing(res)
+                        .then(function(data) {
+                            if (data) {
+                                resourceModel.data.push(data);
+                            }
 
-                        if (index == arr.length-1) {
-                            // Save res datas when sub resource include
-                            resourceModel.save(function(err){
-                                if(err){
-                                    // server Error
-                                    var error = Error(err);
-                                    error.status = 500;
-                                    console.error(error);
-                                    isFail = err;
-                                }
-                                return callback(isFail, resourceModel);
-                            });
-                        }
-                    })
-                    .catch(function(err) {
-                        // parameter error
-                        if (index == arr.length-1) {
-                            return callback(err);
-                        } else {
-                            return isFail = err;
-                        }
-                    });
-            });
+                            if (index == arr.length-1) {
+                                // Save res datas when sub resource include
+                                resourceModel.save(function(err){
+                                    if(err){
+                                        // server Error
+                                        var error = Error(err);
+                                        error.status = 500;
+                                        console.error(error);
+                                        isFail = err;
+                                    }
+                                    return callback(isFail, resourceModel);
+                                });
+                            }
+                        })
+                        .catch(function(err) {
+                            // parameter error
+                            if (index == arr.length-1) {
+                                return callback(err);
+                            } else {
+                                return isFail = err;
+                            }
+                        });
+                });
+            } else {
+                return callback(isFail, resourceModel);
+            }
         })
         .catch(function(err) {
             // parameter error
