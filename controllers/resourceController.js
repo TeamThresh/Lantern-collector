@@ -4,6 +4,7 @@
 
 var resourceModel = require('../models/resourceModel');
 var analyzerModel = require('../models/analyzerModel');
+//var resourceSender = require('./resourceSender');
 
 /**
  *
@@ -25,6 +26,8 @@ module.exports = {
             if (err) {
                 return err instanceof Number ? next(err) : next(500);
             }
+console.log("Mongo DB Work DONE");
+	if (resource.data.length > 0) {
             analyzerModel.saveAnalysisDump(
                 resource, 
                 function(err) {
@@ -36,6 +39,13 @@ module.exports = {
                         msg: "complete"
                     });
                 });
+	} else {
+		return res.json({
+			msg: "complete"
+		});
+	}
         });
+
+        //resourceSender.send(data.dump);
     }
 };

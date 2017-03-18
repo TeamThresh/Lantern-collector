@@ -220,15 +220,12 @@ var newActivity = function(context, header) {
  * @return Promise
  */
 var insertCount = function(context, key) {
-	console.log("have key?? "+key);
 	return new Promise(function(resolved, rejected) {
-		var insert = [key];
-        var sql = "INSERT INTO activity_table SET " +
-            "`act_id` = ?, " +
-            "`user_count` = 1 " +
-            "ON DUPLICATE KEY UPDATE " +
-            "`user_count` = `user_count` + 1 ";
-        context.connection.query(sql, insert, function (err, rows) {
+		var update = [key];
+	        var sql = "UPDATE activity_table SET " +
+	            "`user_count` = `user_count` + 1 " +
+	            "WHERE `act_id` = ? ";
+        context.connection.query(sql, update, function (err, rows) {
             if (err) {
                 context.connection.rollback();
                 var error = new Error("insert failed");

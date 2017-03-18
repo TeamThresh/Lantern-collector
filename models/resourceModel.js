@@ -10,11 +10,12 @@ var ResourceData = require('./resourceData');
  * @param callback(err, insert_id)
  */
 exports.saveResourceDump = function(obj, callback) {
-    
+   console.log("save res start"); 
     // Main resource Model
     ResourceHeader.resourceParcing(obj)
         .then(function(resourceModel) {
             var isFail = false;
+	if (obj.data.length > 0) {
             obj.data.forEach(function(res, index, arr) {
                 // Sub resource Model (each datas)
                 ResourceData.resourceDataParcing(res)
@@ -46,6 +47,9 @@ exports.saveResourceDump = function(obj, callback) {
                         }
                     });
             });
+	} else {
+		return callback(isFail, resourceModel);
+	}
         })
         .catch(function(err) {
             // parameter error
