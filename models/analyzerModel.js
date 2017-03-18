@@ -27,7 +27,6 @@ exports.saveAnalysisDump = function(obj, callback) {
         	// start analyzing
         	return new Promise(function(resolved, rejected) {
         		obj.data.forEach(function(arr, index) {
-        			console.log(arr.type);
         			// switch each array object's type
 			    	switch(arr.type) {
 			    		case "res": // Analyze resource
@@ -66,7 +65,6 @@ exports.saveAnalysisDump = function(obj, callback) {
 			        				});
 			        			})
 			        			.then(function() {
-			        				console.log("insert count 되기도 전에 문제다");
 			        				return new Promise(function(inresolved, inrejected) {
 			        					// Add CPU usage
 			        					let total = arr.os.cpu.user 
@@ -80,7 +78,6 @@ exports.saveAnalysisDump = function(obj, callback) {
 			        				});
 			        			})
 			        			.then(function() {
-			        				console.log("cpu 이후가 문제다");
 			        				// Add Memory usage
 			        				return new Promise(function(inresolved, inrejected) {
 			        					let mem_rate = arr.app.memory.alloc/arr.app.memory.max;
@@ -90,7 +87,6 @@ exports.saveAnalysisDump = function(obj, callback) {
 			        				});
 			        			})
 			        			.then(function() {
-			        				console.log("res 부분은 문제가 아니다");
 			        				// Check forEach loop whether last or not
 					        		if (index == obj.data.length-1) {
 				        				return resolved(context);
@@ -119,7 +115,6 @@ exports.saveAnalysisDump = function(obj, callback) {
 					        }
 					    	break;
 	        			case "crash": // Analyze crash info
-	        				console.log("crash 까지 왔다");
 	        				// Crash 정보 가져옴
 							let crash_info = {
 	        					crash_name : "",
@@ -128,30 +123,38 @@ exports.saveAnalysisDump = function(obj, callback) {
 	        					crash_time : arr.crash_time
 	        				};
 	        				
-	        				console.log(arr);
 	        				let stacktraceList = arr.stacktrace.split("\n");
 	        				// Stacktrace 를 돌면서 Crash 이름, 위치 찾음
 	        				stacktraceList.forEach(function(line, index) {
 	        					// Cuased by 추출 (crash 이름, 위치)
 	        					let compareWord = line.slice(0, 9);
-	        					console.log("힝2");
 	        					if (compareWord === "Caused by") {
 	        						let splitedLine = line.split(":");
 	        						crash_info.crash_name = splitedLine[1].trim();
 	        						crash_info.crash_location = stacktraceList[index+1]
 	        							.trim()	// 좌우 공백 제거
 	        							.split(" ")[1];	// at 제거
-console.log("실행");
+
 			        				// Crash 정보 DB 저장
-									insertCrash(context, key, crash_info)
-		        						.then(function() {
+			        				let key;
+					        		getActivityKey(context, header)
+					        			.then(function(result) {
+					        				// get a key
+					        				key = result;
+					        				return new Promise(function(inresolved, inrejected) {
+					        					// insert crash info
+					        					insertCrash(context, key, crash_info)
+					        						.then(inresolved)
+					        						.catch(inrejected);
+					        				});
+					        			})
+					        			.then(function() {
 					        				if (index == obj.data.length-1) {
 						        				return resolved(context);
 									        }
 		        						})
 		        						.catch(function(err) {
 		        							// Occurred an error by server
-		        							console.log("여기?");
 							            	context.connection.rollback();
 							            	mysqlSetting.releaseConnection(context);
 								            var error = new Error(err);
@@ -266,8 +269,6 @@ var newActivity = function(context, header) {
             } else if (rows.insertId) {
             	key = rows.insertId;
             }
-			console.log("ROWS");
-			console.log(rows);
             //context.connection.release();
             return resolved(key);
         });
@@ -282,13 +283,11 @@ var newActivity = function(context, header) {
  */
 var insertCount = function(context, key) {
 	return new Promise(function(resolved, rejected) {
-		console.log("insert count 에서 문제다");
 		var update = [key];
         var sql = "UPDATE activity_table SET " +
             "`user_count` = `user_count` + 1 " +
             "WHERE `act_id` = ? ";
         context.connection.query(sql, update, function (err, rows) {
-        	console.log(rows);
             if (err) {
                 var error = new Error("insert failed");
                 error.status = 500;
@@ -389,10 +388,10 @@ var insertOutboundCall = function(context, key, rate) {
 };*/
 
 /**
- * asdadasdasd
+ * Add crash information and increase the count
  * @param context - To get mysql connection on this object
  * @param key - Resource Key
- * @param rate - CPU usage rate
+ * @param crash_info - Crash information
  * @return Promise
  */
 var insertCrash = function(context, key, crash_info) {
@@ -409,7 +408,6 @@ var insertCrash = function(context, key, crash_info) {
             "ON DUPLICATE KEY UPDATE " +
             "`last_time` = ?, " +
             "`crash_count` = `crash_count` + 1";
-            console.log(sql);
         context.connection.query(sql, insert, function (err, rows) {
             if (err) {
                 var error = new Error("insert failed");
@@ -417,8 +415,7 @@ var insertCrash = function(context, key, crash_info) {
                 console.error(err);
                 return rejected(error);
             }
-console.log(rows);
-            //context.connection.release();
+            
             return resolved();
         });
     });
