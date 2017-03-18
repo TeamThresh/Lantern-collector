@@ -284,9 +284,9 @@ var newActivity = function(context, header) {
 var insertCount = function(context, key) {
 	return new Promise(function(resolved, rejected) {
 		var update = [key];
-        var sql = "UPDATE activity_table SET " +
-            "`user_count` = `user_count` + 1 " +
-            "WHERE `act_id` = ? ";
+	        var sql = "UPDATE activity_table SET " +
+	            "`user_count` = `user_count` + 1 " +
+	            "WHERE `act_id` = ? ";
         context.connection.query(sql, update, function (err, rows) {
             if (err) {
                 var error = new Error("insert failed");
