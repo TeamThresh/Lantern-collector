@@ -20,6 +20,7 @@ exports.saveAnalysisDump = function(obj, callback) {
 		today : date.getFullYear()+"-"+(date.getMonth()+1)+"-"+date.getDate()
 	};
 
+	// TODO 다중 쿼리로 변경할 필요가 있음
 	mysqlSetting.getPool()
         .then(mysqlSetting.getConnection)
         .then(mysqlSetting.connBeginTransaction)
@@ -118,7 +119,6 @@ exports.saveAnalysisDump = function(obj, callback) {
 	        				// Crash 정보 가져옴
 							let crash_info = {
 	        					crash_name : "",
-	        					crash_activity : header.activity_name,
 	        					crash_location : "",
 	        					crash_time : arr.crash_time
 	        				};
@@ -150,29 +150,46 @@ exports.saveAnalysisDump = function(obj, callback) {
 					        			})
 					        			.then(function() {
 					        				if (index == obj.data.length-1) {
+					        					if (isFail) {
+									            	// if need rollback remove comment
+									            	context.connection.rollback();
+									            	mysqlSetting.releaseConnection(context);
+										            var error = new Error(err);
+										            error.status = 500;
+										            console.error(error);
+							        				return rejected(isFail)
+										        }
 						        				return resolved(context);
 									        }
 		        						})
 		        						.catch(function(err) {
 		        							// Occurred an error by server
-							            	context.connection.rollback();
-							            	mysqlSetting.releaseConnection(context);
-								            var error = new Error(err);
-								            error.status = 500;
-								            console.error(error);
 								            isFail = error;
 								            if (index == obj.data.length-1) {
 								            	// if need rollback remove comment
-		                						//context.connection.rollback();
+								            	context.connection.rollback();
+								            	mysqlSetting.releaseConnection(context);
+									            var error = new Error(err);
+									            error.status = 500;
+									            console.error(error);
 						        				return rejected(isFail)
 									        }
 		        						});
 	        					} else {
 	        						if (index == obj.data.length-1) {
 	        							// Crash는 발생했으나 parsing 실패한경우
-	        							if (crash_info.crash_name === "") {
+	        							/*if (crash_info.crash_name === "") {
 	        								console.error("Cannot find crash info");
-	        							}
+	        							}*/
+	        							if (isFail) {
+							            	// if need rollback remove comment
+							            	context.connection.rollback();
+							            	mysqlSetting.releaseConnection(context);
+								            var error = new Error(err);
+								            error.status = 500;
+								            console.error(error);
+					        				return rejected(isFail)
+								        }
 		        						return resolved(context);
 							        }
 	        					}
@@ -415,7 +432,7 @@ var insertCrash = function(context, key, crash_info) {
                 console.error(err);
                 return rejected(error);
             }
-            
+
             return resolved();
         });
     });
