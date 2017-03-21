@@ -149,7 +149,7 @@ exports.saveAnalysisDump = function(obj, callback) {
 					        				});
 					        			})
 					        			.then(function() {
-					        				if (index == obj.data.length-1) {
+					        				if (index == stacktraceList.length-1) {
 					        					if (isFail) {
 									            	// if need rollback remove comment
 									            	context.connection.rollback();
