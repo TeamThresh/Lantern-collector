@@ -125,13 +125,13 @@ exports.saveAnalysisDump = function(obj, callback) {
 	        				
 	        				let stacktraceList = arr.stacktrace.split("\n");
 	        				// Stacktrace 를 돌면서 Crash 이름, 위치 찾음
-	        				stacktraceList.forEach(function(line, index) {
+	        				stacktraceList.forEach(function(line, in_index) {
 	        					// Cuased by 추출 (crash 이름, 위치)
 	        					let compareWord = line.slice(0, 9);
 	        					if (compareWord === "Caused by") {
 	        						let splitedLine = line.split(":");
 	        						crash_info.crash_name = splitedLine[1].trim();
-	        						crash_info.crash_location = stacktraceList[index+1]
+	        						crash_info.crash_location = stacktraceList[in_index+1]
 	        							.trim()	// 좌우 공백 제거
 	        							.split(" ")[1];	// at 제거
 
@@ -149,7 +149,8 @@ exports.saveAnalysisDump = function(obj, callback) {
 					        				});
 					        			})
 					        			.then(function() {
-					        				if (index == stacktraceList.length-1) {
+					        				if (in_index == stacktraceList.length-1
+					        					&& index == obj.data.length-1) {
 					        					if (isFail) {
 									            	// if need rollback remove comment
 									            	context.connection.rollback();
@@ -165,7 +166,8 @@ exports.saveAnalysisDump = function(obj, callback) {
 		        						.catch(function(err) {
 		        							// Occurred an error by server
 								            isFail = error;
-								            if (index == obj.data.length-1) {
+								            if (in_index == stacktraceList.length-1
+					        					&& index == obj.data.length-1) {
 								            	// if need rollback remove comment
 								            	context.connection.rollback();
 								            	mysqlSetting.releaseConnection(context);
@@ -176,7 +178,8 @@ exports.saveAnalysisDump = function(obj, callback) {
 									        }
 		        						});
 	        					} else {
-	        						if (index == obj.data.length-1) {
+	        						if (in_index == stacktraceList.length-1
+	        							&& index == obj.data.length-1) {
 	        							// Crash는 발생했으나 parsing 실패한경우
 	        							/*if (crash_info.crash_name === "") {
 	        								console.error("Cannot find crash info");
