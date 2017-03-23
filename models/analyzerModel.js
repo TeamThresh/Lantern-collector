@@ -118,50 +118,83 @@ exports.saveAnalysisDump = function(obj, callback) {
 	        				// Crash 정보 가져옴
 							let crash_info = {
 	        					crash_name : "",
-	        					crash_activity : header.activity_name,
 	        					crash_location : "",
 	        					crash_time : arr.crash_time
 	        				};
 	        				
 	        				let stacktraceList = arr.stacktrace.split("\n");
 	        				// Stacktrace 를 돌면서 Crash 이름, 위치 찾음
-	        				stacktraceList.forEach(function(line, index) {
+	        				stacktraceList.forEach(function(line, in_index) {
 	        					// Cuased by 추출 (crash 이름, 위치)
 	        					let compareWord = line.slice(0, 9);
+console.log("비교문자"+compareWord);
 	        					if (compareWord === "Caused by") {
 	        						let splitedLine = line.split(":");
 	        						crash_info.crash_name = splitedLine[1].trim();
-	        						crash_info.crash_location = stacktraceList[index+1]
+	        						crash_info.crash_location = stacktraceList[in_index+1]
 	        							.trim()	// 좌우 공백 제거
 	        							.split(" ")[1];	// at 제거
 			        				// Crash 정보 DB 저장
-									insertCrash(context, key, crash_info)
-		        						.then(function() {
-					        				if (index == obj.data.length-1) {
+								let key;
+					        		getActivityKey(context, header)
+					        			.then(function(result) {
+					        				// get a key
+					        				key = result;
+					        				return new Promise(function(inresolved, inrejected) {
+					        					// increase user count
+					        					insertCrash(context, key, crash_info)
+					        						.then(inresolved)
+					        						.catch(inrejected);
+					        				});
+					        			})
+					        			.then(function() {
+										console.log("아직 아니야: "+index);
+console.log(stacktraceList.length);
+					        				if (in_index == stacktraceList.length-1
+					        					&& index == obj.data.length-1) {
+console.log("마지막 실행");
+					        					if (isFail) {
+									            	// if need rollback remove comment
+									            	context.connection.rollback();
+									            	mysqlSetting.releaseConnection(context);
+										            var error = new Error(err);
+										            error.status = 500;
+										            console.error(error);
+							        				return rejected(isFail)
+										        }
 						        				return resolved(context);
 									        }
 		        						})
 		        						.catch(function(err) {
 		        							// Occurred an error by server
-		        							console.log("여기?");
+										isFail = error;
+								            if (in_index == stacktraceList.length-1
+					        					&& index == obj.data.length-1) {
+								            	// if need rollback remove comment
+								            	context.connection.rollback();
+								            	mysqlSetting.releaseConnection(context);
+									            var error = new Error(err);
+									            error.status = 500;
+									            console.error(error);
+						        				return rejected(isFail)
+									        }
+		        						});
+	        					} else {
+	        						if (in_index == stacktraceList.length-1
+							    	&& index == obj.data.length-1) {
+	        							// Crash는 발생했으나 parsing 실패한경우
+	        							/*if (crash_info.crash_name === "") {
+	        								console.error("Cannot find crash info");
+	        							}*/
+	        							if (isFail) {
+							            	// if need rollback remove comment
 							            	context.connection.rollback();
 							            	mysqlSetting.releaseConnection(context);
 								            var error = new Error(err);
 								            error.status = 500;
 								            console.error(error);
-								            isFail = error;
-								            if (index == obj.data.length-1) {
-								            	// if need rollback remove comment
-		                						//context.connection.rollback();
-						        				return rejected(isFail)
-									        }
-		        						});
-	        					} else {
-	        						if (index == obj.data.length-1) {
-	        							// Crash는 발생했으나 parsing 실패한경우
-	        							if (crash_info.crash_name === "") {
-	        								console.error("Cannot find crash info");
-	        							}
+					        				return rejected(isFail)
+								        }
 		        						return resolved(context);
 							        }
 	        					}
@@ -384,6 +417,7 @@ var insertOutboundCall = function(context, key, rate) {
  * @return Promise
  */
 var insertCrash = function(context, key, crash_info) {
+console.log("crash insert");
 	return new Promise(function(resolved, rejected) {
 		var insert = [key, crash_info.crash_name, crash_info.crash_location,
 					crash_info.crash_time, crash_info.crash_time, crash_info.crash_time];
@@ -397,8 +431,11 @@ var insertCrash = function(context, key, crash_info) {
             "ON DUPLICATE KEY UPDATE " +
             "`last_time` = ?, " +
             "`crash_count` = `crash_count` + 1";
-            console.log(sql);
         context.connection.query(sql, insert, function (err, rows) {
+console.log(err);
+console.log(rows);
+console.log(insert);
+console.log(sql);
             if (err) {
                 var error = new Error("insert failed");
                 error.status = 500;
