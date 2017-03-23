@@ -4,16 +4,17 @@
 var credentials = require('../credentials');
 var mysql = require('mysql');
 var pool = mysql.createPool({
-    connectTimeout: 60 * 60 * 1000,
-    timeout: 60 * 60 * 1000,
-    aquireTimeout: 60 * 60 * 1000,
+    connectTimeout: 10000,
+    timeout: 10000,
+    aquireTimeout: 10000,
     host: credentials.mysql.host,
     port: credentials.mysql.port,
     user: credentials.mysql.user,
     password: credentials.mysql.password,
     database: credentials.mysql.database,
-    connectionLimit: 50,
-    waitForConnections: true
+    connectionLimit: 500,
+    waitForConnections: true,
+    queueLimit: 50
 });
 
 var getPool = function() {
