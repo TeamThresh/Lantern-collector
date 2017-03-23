@@ -10,7 +10,7 @@ var ResourceData = require('./resourceData');
  * @param callback(err, insert_id)
  */
 exports.saveResourceDump = function(obj, callback) {
-   console.log("save res start"); 
+    
     // Main resource Model
     ResourceHeader.resourceParcing(obj)
         .then(function(resourceModel) {

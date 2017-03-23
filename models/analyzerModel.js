@@ -11,15 +11,14 @@ var mysqlSetting = require('./mysqlSetting');
 exports.saveAnalysisDump = function(obj, callback) {
 	var isFail = false;
 	// Set head infomation of resource
-	var date = new Date();
 	var header = {
 		app_name : obj.package_name,
 		os_ver : obj.device_info.os,
 		app_ver : obj.device_info.app,
-		device_name : obj.device_info.device,
-		today : date.getFullYear()+"-"+(date.getMonth()+1)+"-"+date.getDate()
+		device_name : obj.device_info.device
 	};
-
+	var format = require('date-format');
+	// TODO 다중 쿼리로 변경할 필요가 있음
 	mysqlSetting.getPool()
         .then(mysqlSetting.getConnection)
         .then(mysqlSetting.connBeginTransaction)
@@ -36,9 +35,11 @@ exports.saveAnalysisDump = function(obj, callback) {
 			    				? stack_length = 0 
 			    				: stack_length = arr.app.activity_stack.length-1;
 			        		header.activity_name = arr.app.activity_stack[stack_length];
+			        		let resHead = JSON.parse(JSON.stringify(header));
+			        		resHead.today = format('yyyy-MM-dd hh:mm:00', new Date(arr.duration_time.start));
 
 			        		// dosen't have any activity name
-			        		if (header.activity_name == null) {
+			        		if (resHead.activity_name == null) {
 			        			console.log("break!");
 					            if (index == obj.data.length-1) {
 					            	context.connection.rollback();
@@ -53,7 +54,7 @@ exports.saveAnalysisDump = function(obj, callback) {
 			        		
 			        		// set activity key which use all tables
 			        		let key;
-			        		getActivityKey(context, header)
+			        		getActivityKey(context, resHead)
 			        			.then(function(result) {
 			        				// get a key
 			        				key = result;
@@ -109,6 +110,8 @@ exports.saveAnalysisDump = function(obj, callback) {
 			        		break;
 	        			case "render": // Analyze rendering data
 					    	header.activity_name = arr.activity_name;
+	        				let rendHead = JSON.parse(JSON.stringify(header));
+					    	rendHead.today = format('yyyy-MM-dd hh:mm:ss', new Date(arr.callback_time));
 					    	// TODO
 					    	if (index == obj.data.length-1) {
 		        				return resolved(context);
@@ -121,7 +124,9 @@ exports.saveAnalysisDump = function(obj, callback) {
 	        					crash_location : "",
 	        					crash_time : arr.crash_time
 	        				};
-	        				
+	        				let crashHead = JSON.parse(JSON.stringify(header));
+	        				crashHead.today = format('yyyy-MM-dd hh:mm:00', new Date(arr.crash_time));
+
 	        				let stacktraceList = arr.stacktrace.split("\n");
 	        				// Stacktrace 를 돌면서 Crash 이름, 위치 찾음
 	        				stacktraceList.forEach(function(line, in_index) {
@@ -134,25 +139,23 @@ console.log("비교문자"+compareWord);
 	        						crash_info.crash_location = stacktraceList[in_index+1]
 	        							.trim()	// 좌우 공백 제거
 	        							.split(" ")[1];	// at 제거
+
 			        				// Crash 정보 DB 저장
-								let key;
-					        		getActivityKey(context, header)
+			        				let key;
+					        		getActivityKey(context, crashHead)
 					        			.then(function(result) {
 					        				// get a key
 					        				key = result;
 					        				return new Promise(function(inresolved, inrejected) {
-					        					// increase user count
+					        					// insert crash info
 					        					insertCrash(context, key, crash_info)
 					        						.then(inresolved)
 					        						.catch(inrejected);
 					        				});
 					        			})
 					        			.then(function() {
-										console.log("아직 아니야: "+index);
-console.log(stacktraceList.length);
 					        				if (in_index == stacktraceList.length-1
 					        					&& index == obj.data.length-1) {
-console.log("마지막 실행");
 					        					if (isFail) {
 									            	// if need rollback remove comment
 									            	context.connection.rollback();
@@ -167,7 +170,7 @@ console.log("마지막 실행");
 		        						})
 		        						.catch(function(err) {
 		        							// Occurred an error by server
-										isFail = error;
+								            isFail = error;
 								            if (in_index == stacktraceList.length-1
 					        					&& index == obj.data.length-1) {
 								            	// if need rollback remove comment
@@ -181,7 +184,7 @@ console.log("마지막 실행");
 		        						});
 	        					} else {
 	        						if (in_index == stacktraceList.length-1
-							    	&& index == obj.data.length-1) {
+	        							&& index == obj.data.length-1) {
 	        							// Crash는 발생했으나 parsing 실패한경우
 	        							/*if (crash_info.crash_name === "") {
 	        								console.error("Cannot find crash info");
@@ -225,14 +228,14 @@ console.log("마지막 실행");
 /**
  * Get Activities key in Database
  * @param context - To get mysql connection on this object
- * @param header - To get resource informations
+ * @param app_info - To get resource informations
  * @return Promise
  */
-var getActivityKey = function(context, header) {
+var getActivityKey = function(context, app_info) {
 	return new Promise(function(resolved, rejected) {
-		var select = [header.app_name, header.activity_name,
-			header.os_ver, header.app_ver, 
-			header.device_name, header.today];
+		var select = [app_info.app_name, app_info.activity_name,
+			app_info.os_ver, app_info.app_ver, 
+			app_info.device_name, app_info.today];
         var sql = "SELECT act_id " +
             "FROM activity_table " +
             "WHERE `app_name` = ? " +
@@ -249,7 +252,7 @@ var getActivityKey = function(context, header) {
                 console.error(err);
                 return rejected(error);
             } else if (rows.length == 0) {
-            	newActivity(context, header)
+            	newActivity(context, app_info)
             		.then(function(result) {
             			key = result;
             			return resolved(key);
@@ -266,14 +269,14 @@ var getActivityKey = function(context, header) {
 /**
  * Make Activities key in Database
  * @param context - To get mysql connection on this object
- * @param header - To get resource informations
+ * @param app_info - To get resource informations
  * @return Promise
  */
-var newActivity = function(context, header) {
+var newActivity = function(context, app_info) {
 	return new Promise(function(resolved, rejected) {
-		var insert = [header.app_name, header.activity_name,
-			header.os_ver, header.app_ver, 
-			header.device_name, header.today];
+		var insert = [app_info.app_name, app_info.activity_name,
+			app_info.os_ver, app_info.app_ver, 
+			app_info.device_name, app_info.today];
 		var sql = "INSERT INTO activity_table SET " +
             "`app_name` = ?, " +
             "`activity_name` = ?, " +
@@ -306,9 +309,9 @@ var newActivity = function(context, header) {
 var insertCount = function(context, key) {
 	return new Promise(function(resolved, rejected) {
 		var update = [key];
-	        var sql = "UPDATE activity_table SET " +
-	            "`user_count` = `user_count` + 1 " +
-	            "WHERE `act_id` = ? ";
+        var sql = "UPDATE activity_table SET " +
+            "`user_count` = `user_count` + 1 " +
+            "WHERE `act_id` = ? ";
         context.connection.query(sql, update, function (err, rows) {
             if (err) {
                 var error = new Error("insert failed");
@@ -410,10 +413,10 @@ var insertOutboundCall = function(context, key, rate) {
 };*/
 
 /**
- * asdadasdasd
+ * Add crash information and increase the count
  * @param context - To get mysql connection on this object
  * @param key - Resource Key
- * @param rate - CPU usage rate
+ * @param crash_info - Crash information
  * @return Promise
  */
 var insertCrash = function(context, key, crash_info) {
@@ -442,7 +445,7 @@ console.log(sql);
                 console.error(err);
                 return rejected(error);
             }
-            //context.connection.release();
+
             return resolved();
         });
     });
