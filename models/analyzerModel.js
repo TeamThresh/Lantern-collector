@@ -486,7 +486,6 @@ var insertOutboundCall = function(context, key, host) {
             "`host_count` = `host_count` + 1";
         context.connection.query(sql, insert, function (err, rows) {
             if (err) {
-                context.connection.release();
                 var error = new Error("insert failed");
                 error.status = 500;
                 console.error(err);
