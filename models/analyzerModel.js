@@ -476,11 +476,11 @@ var insertOutboundCall = function(context, key, host) {
 	return new Promise(function(resolved, rejected) {
 		var insert = [host.name, host.status, host.speed, key, host.speed];
         var sql = "INSERT INTO obc_table SET " +
+            "`act_host_id` = ?, " +
             "`host_name` = ?, " +
             "`host_status` = ?, " +
             "`host_speed` = ?, " +
             "`host_count` = 1 " +
-            "WHERE `act_host_id` = ? " +
             "ON DUPLICATE KEY UPDATE " +
             "`host_speed` = `host_speed` + ?, " +
             "`host_count` = `host_count` + 1";
