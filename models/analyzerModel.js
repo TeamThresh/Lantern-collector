@@ -254,7 +254,7 @@ function dumpSavingLooper(context, list, header) {
 	        					// Add CPU usage
 	        					let host = {
 			    					name : arr.host,
-			    					speed : (arr.response_time - request_time),
+			    					speed : (arr.response_time - arr.request_time),
 			    					status : "" // TODO 데이터 셋에서 추가할 것
 			    				};
 
