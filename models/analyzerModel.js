@@ -59,13 +59,21 @@ function dumpSavingLooper(context, list, header) {
 
 	        		// dosen't have any activity name
 	        		if (resHead.activity_name == null) {
-	        			console.log("break!");
-		            	context.connection.rollback();
-		            	mysqlSetting.releaseConnection(context);
-		            	var error = new Error("wrong activity name");
-			            error.status = 400;
-			            console.error(error);
-        				return rejected(error);
+	        			// 다음으로 넘김
+        				if (in_index == stacktraceList.length-1) {
+							if (isFail) {
+				            	// if need rollback remove comment
+				            	context.connection.rollback();
+				            	mysqlSetting.releaseConnection(context);
+					            var error = new Error(err);
+					            error.status = 500;
+					            console.error(error);
+		        				return rejected(isFail)
+					        }
+    						return dumpSavingLooper(context, list, header)
+	        					.then(resolved)
+	        					.catch(rejected);
+				        }
 	        		}
 	        		
 	        		// set activity key which use all tables
@@ -97,7 +105,7 @@ function dumpSavingLooper(context, list, header) {
 	        			.then(function() {
 	        				// Add Memory usage
 	        				return new Promise(function(inresolved, inrejected) {
-	        					let mem_rate = arr.app.memory.alloc/arr.app.memory.max;
+	        					let mem_rate = (arr.app.memory.alloc/arr.app.memory.max) * 100;
 	        					insertMemory(context, key, mem_rate)
 	        						.then(inresolved)
 	        						.catch(inrejected);
@@ -222,6 +230,66 @@ function dumpSavingLooper(context, list, header) {
 					dumpSavingLooper(context, list, header)
     					.then(resolved)
     					.catch(rejected);
+
+    				//set activity name
+	        		let reqHead = JSON.parse(JSON.stringify(header));
+	        		
+	        		// Get Activity Key
+	        		let key;
+	        		getActivityKey(context, reqHead)
+	        			.then(function(result) {
+	        				// get a key
+	        				key = result;
+	        				return new Promise(function(inresolved, inrejected) {
+	        					// increase user count
+	        					insertCount(context, key)
+	        						.then(inresolved)
+	        						.catch(inrejected);
+	        				});
+	        			})
+	        			.then(function() {
+	        				return new Promise(function(inresolved, inrejected) {
+	        					// Add CPU usage
+	        					let host = {
+			    					name : arr.host,
+			    					speed : (arr.response_time - request_time),
+			    					status : "" // TODO 데이터 셋에서 추가할 것
+			    				};
+
+	        					insertOutboundCall(context, key, host)
+	        						.then(inresolved)
+	        						.catch(inrejected)
+	        				});
+	        			})
+	        			.then(function() {
+	        				if (in_index == stacktraceList.length-1) {
+	        					if (isFail) {
+					            	// if need rollback remove comment
+					            	context.connection.rollback();
+					            	mysqlSetting.releaseConnection(context);
+						            var error = new Error(err);
+						            error.status = 500;
+						            console.error(error);
+			        				return rejected(isFail)
+						        }
+		        				return dumpSavingLooper(context, list, header)
+		        					.then(resolved)
+		        					.catch(rejected);
+					        }
+						})
+						.catch(function(err) {
+							// Occurred an error by server
+				            isFail = error;
+				            if (in_index == stacktraceList.length-1) {
+				            	// if need rollback remove comment
+				            	context.connection.rollback();
+				            	mysqlSetting.releaseConnection(context);
+					            var error = new Error(err);
+					            error.status = 500;
+					            console.error(error);
+		        				return rejected(isFail)
+					        }
+						});
 			        break;
 			}
 		} else {
@@ -393,17 +461,26 @@ var insertMemory = function(context, key, rate) {
         });
     });
 };
-/*
-var insertOutboundCall = function(context, key, rate) {
+
+/**
+ * Add out bound call information and increase the count
+ * @param context - To get mysql connection on this object
+ * @param key - Resource Key
+ * @param host - Call information
+ * @return Promise
+ */
+var insertOutboundCall = function(context, key, host) {
 	return new Promise(function(resolved, rejected) {
-		var insert = [rate, key, rate];
-        var sql = "INSERT INTO memory_table SET " +
-            "`mem_sum` = ?, " +
-            "`mem_count` = 1 " +
-            "WHERE `act_mem_id` = ? " +
+		var insert = [host.name, host.status, host.speed, key, host.speed];
+        var sql = "INSERT INTO obc_table SET " +
+            "`host_name` = ?, " +
+            "`host_status` = ?, " +
+            "`host_speed` = ?, " +
+            "`host_count` = 1 " +
+            "WHERE `act_host_id` = ? " +
             "ON DUPLICATE KEY UPDATE " +
-            "`mem_sum` = `mem_sum` + ?, " +
-            "`mem_count` = `mem_count` + 1";
+            "`host_speed` = `host_speed` + ?, " +
+            "`host_count` = `host_count` + 1";
         context.connection.query(sql, insert, function (err, rows) {
             if (err) {
                 context.connection.release();
@@ -413,10 +490,9 @@ var insertOutboundCall = function(context, key, rate) {
                 return rejected(error);
             }
 
-            context.connection.release();
-            return resolved(context, key);
+            return resolved();
         });
-};*/
+};
 
 /**
  * Add crash information and increase the count
