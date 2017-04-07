@@ -474,7 +474,7 @@ var insertMemory = function(context, key, rate) {
  */
 var insertOutboundCall = function(context, key, host) {
 	return new Promise(function(resolved, rejected) {
-		var insert = [host.name, host.status, host.speed, key, host.speed];
+		var insert = [key, host.name, host.status, host.speed, host.speed];
         var sql = "INSERT INTO obc_table SET " +
             "`act_host_id` = ?, " +
             "`host_name` = ?, " +
