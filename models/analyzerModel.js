@@ -255,7 +255,7 @@ function dumpSavingLooper(context, list, header) {
 	        					let host = {
 			    					name : arr.host,
 			    					speed : (arr.response_time - arr.request_time),
-			    					status : "" // TODO 데이터 셋에서 추가할 것
+			    					status : 200 // TODO 데이터 셋에서 추가할 것
 			    				};
 
 	        					insertOutboundCall(context, act_host_key, host)
