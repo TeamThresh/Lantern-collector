@@ -190,7 +190,7 @@ function dumpSavingLooper(context, list, header) {
 	    						})
 	    						.catch(function(err) {
 	    							// Occurred an error by server
-						            isFail = error;
+						            isFail = err;
 						            if (in_index == stacktraceList.length-1) {
 						            	// if need rollback remove comment
 						            	context.connection.rollback();
@@ -233,16 +233,17 @@ function dumpSavingLooper(context, list, header) {
 
     				//set activity name
 	        		let reqHead = JSON.parse(JSON.stringify(header));
+	        		reqHead.today = format('yyyy-MM-dd hh:mm:00', new Date(arr.request_time));
 	        		
 	        		// Get Activity Key
-	        		let key;
+	        		let act_host_key;
 	        		getActivityKey(context, reqHead)
 	        			.then(function(result) {
 	        				// get a key
-	        				key = result;
+	        				act_host_key = result;
 	        				return new Promise(function(inresolved, inrejected) {
 	        					// increase user count
-	        					insertCount(context, key)
+	        					insertCount(context, act_host_key)
 	        						.then(inresolved)
 	        						.catch(inrejected);
 	        				});
@@ -256,7 +257,7 @@ function dumpSavingLooper(context, list, header) {
 			    					status : "" // TODO 데이터 셋에서 추가할 것
 			    				};
 
-	        					insertOutboundCall(context, key, host)
+	        					insertOutboundCall(context, act_host_key, host)
 	        						.then(inresolved)
 	        						.catch(inrejected)
 	        				});
@@ -279,7 +280,7 @@ function dumpSavingLooper(context, list, header) {
 						})
 						.catch(function(err) {
 							// Occurred an error by server
-				            isFail = error;
+				            isFail = err;
 				            if (in_index == stacktraceList.length-1) {
 				            	// if need rollback remove comment
 				            	context.connection.rollback();
@@ -492,6 +493,7 @@ var insertOutboundCall = function(context, key, host) {
 
             return resolved();
         });
+    });
 };
 
 /**
