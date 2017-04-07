@@ -18,6 +18,7 @@ module.exports = {
             access_token: req.header('access-token'),
             dump: req.body
         };
+console.log("lanuch_time : "+data.dump.data.length);
 
         // TODO access_token 으로 User 인증
         // TODO validation 파싱을 controller로 뺄 것

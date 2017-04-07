@@ -7,7 +7,7 @@ var errors = require('./routes/error');
 
 var app = express();
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({limit:"50mb"}));
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.use(logger('dev'));

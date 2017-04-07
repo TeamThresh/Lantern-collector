@@ -59,13 +59,27 @@ function dumpSavingLooper(context, list, header) {
 
 	        		// dosen't have any activity name
 	        		if (resHead.activity_name == null) {
-	        			console.log("break!");
+	        			/*console.log("break!");
 		            	context.connection.rollback();
 		            	mysqlSetting.releaseConnection(context);
 		            	var error = new Error("wrong activity name");
 			            error.status = 400;
 			            console.error(error);
-        				return rejected(error);
+        				return rejected(error);*/
+        				if (in_index == stacktraceList.length-1) {
+							if (isFail) {
+				            	// if need rollback remove comment
+				            	context.connection.rollback();
+				            	mysqlSetting.releaseConnection(context);
+					            var error = new Error(err);
+					            error.status = 500;
+					            console.error(error);
+		        				return rejected(isFail)
+					        }
+    						return dumpSavingLooper(context, list, header)
+	        					.then(resolved)
+	        					.catch(rejected);
+				        }
 	        		}
 	        		
 	        		// set activity key which use all tables
@@ -97,7 +111,7 @@ function dumpSavingLooper(context, list, header) {
 	        			.then(function() {
 	        				// Add Memory usage
 	        				return new Promise(function(inresolved, inrejected) {
-	        					let mem_rate = arr.app.memory.alloc/arr.app.memory.max;
+	        					let mem_rate = (arr.app.memory.alloc/arr.app.memory.max) * 100;
 	        					insertMemory(context, key, mem_rate)
 	        						.then(inresolved)
 	        						.catch(inrejected);
