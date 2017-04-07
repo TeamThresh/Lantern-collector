@@ -60,15 +60,16 @@ function dumpSavingLooper(context, list, header) {
 	        		// dosen't have any activity name
 	        		if (resHead.activity_name == null) {
 	        			// 다음으로 넘김
-        				if (in_index == stacktraceList.length-1) {
+        				if (list.length == 0) {
 							if (isFail) {
 				            	// if need rollback remove comment
 				            	context.connection.rollback();
 				            	mysqlSetting.releaseConnection(context);
 					            var error = new Error(err);
 					            error.status = 500;
-					            console.error(error);
-		        				return rejected(isFail)
+					            console.error(err);
+					            isFail = error;
+					            return rejected(isFail);
 					        }
     						return dumpSavingLooper(context, list, header)
 	        					.then(resolved)
@@ -124,7 +125,7 @@ function dumpSavingLooper(context, list, header) {
 				            error.status = 500;
 				            console.error(err);
 				            isFail = error;
-				            return rejected(isFail)
+				            return rejected(isFail);
 	        			});
 	        		break;
 				case "render": // Analyze rendering data
@@ -263,15 +264,16 @@ function dumpSavingLooper(context, list, header) {
 	        				});
 	        			})
 	        			.then(function() {
-	        				if (in_index == stacktraceList.length-1) {
+	        				if (list.length == 0) {
 	        					if (isFail) {
 					            	// if need rollback remove comment
 					            	context.connection.rollback();
 					            	mysqlSetting.releaseConnection(context);
 						            var error = new Error(err);
 						            error.status = 500;
-						            console.error(error);
-			        				return rejected(isFail)
+						            console.error(err);
+						            isFail = error;
+						            return rejected(isFail);
 						        }
 		        				return dumpSavingLooper(context, list, header)
 		        					.then(resolved)
@@ -281,7 +283,7 @@ function dumpSavingLooper(context, list, header) {
 						.catch(function(err) {
 							// Occurred an error by server
 				            isFail = err;
-				            if (in_index == stacktraceList.length-1) {
+				            if (list.length == 0) {
 				            	// if need rollback remove comment
 				            	context.connection.rollback();
 				            	mysqlSetting.releaseConnection(context);
