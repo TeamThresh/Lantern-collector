@@ -3,7 +3,7 @@
  */
 
 var resourceModel = require('../models/resourceModel');
-var analyzerModel = require('../models/analyzerModel');
+var analyzeController = require('./analyzeController');
 
 /**
  *
@@ -27,10 +27,11 @@ console.log("lanuch_time : "+data.dump.data.length);
                 return err instanceof Number ? next(err) : next(500);
             }
             if (resource.data.length > 0) {
-                analyzerModel.saveAnalysisDump(
+                analyzeController.saveAnalysisDump(
                     resource, 
                     function(err) {
                         if (err) {
+                            console.error(err);
                             return err instanceof Number ? next(err) : next(500);
                         }
                         res.statusCode = 200;
