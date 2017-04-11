@@ -46,7 +46,6 @@ function dumpSavingLooper(context, list, header) {
 	context.isFail = false;
 
 	return new Promise(function (resolved, rejected) {
-		console.log("rest length : "+ list.length);
 		if (list.length != 0) {
 			let arr = list.splice(0, 1)[0];
 
@@ -140,7 +139,7 @@ function dumpSavingLooper(context, list, header) {
 			        break;
 			}
 		} else {
-			console.log("반환");
+			// 반환
 			return resolved(context);
 		}
 	});
