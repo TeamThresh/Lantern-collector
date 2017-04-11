@@ -42,6 +42,13 @@ exports.saveAnalysisDump = function(obj, callback) {
 	    });
 };
 
+/**
+ * Dump saving loop
+ * @param context - To get mysql connection on this object
+ * @param list - All dump list
+ * @param header - Dump data header (Which use all data type)
+ * @return Promise
+ */
 function dumpSavingLooper(context, list, header) {
 	context.isFail = false;
 

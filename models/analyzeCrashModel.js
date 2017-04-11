@@ -10,6 +10,9 @@ exports.analyzeCrash = function(context, header, crashData) {
 			crash_time : crashData.crash_time
 		};
 		let crashHead = JSON.parse(JSON.stringify(header));
+		
+		// TODO stacktrace 의 첫줄에 있는 Exception 이름도 가져와야 함
+
 
 		let stacktraceList = crashData.stacktrace.split("\n");
 		// Stacktrace 를 돌면서 Crash 이름, 위치 찾음

@@ -9,7 +9,7 @@ exports.analyzeRequest = function(context, header, requestData) {
 		AnalyzerModel.getActivityKey(context, reqHead)
 			.then(function(act_host_key) {
 				return new Promise(function(inresolved, inrejected) {
-					// Add CPU usage
+					// Add host information
 					let host = {
     					name : requestData.host,
     					speed : (requestData.response_time - requestData.request_time),

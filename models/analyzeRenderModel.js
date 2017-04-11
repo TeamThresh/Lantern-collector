@@ -2,10 +2,10 @@ var AnalyzerModel = require('./analyzerModel');
 
 exports.analyzeRender = function(context, header, rendData) {
 	return new Promise(function(resolved, rejected) {
+		// 최상위 액티비티 변경
 		header.activity_name = rendData.activity_name;
 
-		console.log(header.activity_name + " / "+rendData.lifecycle_name);
-
+		// onResume 일 경우 저장 작업 시작
 		if (rendData.lifecycle_name === "onResume") {
 			// 그전에 가지고 있던 onCreate 나 onStart 시간을 가져옴
 			let rendHead = JSON.parse(JSON.stringify(header));
@@ -19,8 +19,7 @@ exports.analyzeRender = function(context, header, rendData) {
 			// 저장되있는 start 값 초기화
 			header.lifecycle_name = undefined;
 			header.lifecycle_start = undefined;
-			console.log("expired name ? "+header.lifecycle_name);
-			console.log("time : "+rendHead.lifecycle_start +" / "+rendHead.lifecycle_end);
+
 			// set activity key which use all tables
 			let key;
 			AnalyzerModel.getActivityKey(context, rendHead)
@@ -36,7 +35,7 @@ exports.analyzeRender = function(context, header, rendData) {
 				})
 				.then(function() {
 					return new Promise(function(inresolved, inrejected) {
-						// Add CPU usage
+						// Add UI Rendering Speed
 						let ui_speed = rendHead.lifecycle_end - rendHead.lifecycle_start;
 						AnalyzerModel.insertRender(context, key, ui_speed)
 							.then(inresolved)
