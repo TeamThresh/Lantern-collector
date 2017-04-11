@@ -303,14 +303,14 @@ module.exports = {
 	 */
 	insertRender : function(context, key, render_info) {
 		return new Promise(function(resolved, rejected) {
-			var insert = [key, render_info.ui_speed, render_info.ui_speed];
+			var insert = [key, render_info, render_info];
 	        var sql = "INSERT INTO ui_table SET " +
 	            "`act_ui_id` = ?, " +
 	            "`ui_sum` = ?, " +
-	            "`ui_count` = 0 " +
+	            "`ui_count` = 1 " +
 	            "ON DUPLICATE KEY UPDATE " +
 	            "`ui_sum` = `ui_sum` + ?, " +
-	            "`crash_count` = `crash_count` + 1";
+	            "`ui_count` = `ui_count` + 1";
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
 	                var error = new Error("insert failed");
