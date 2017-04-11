@@ -54,8 +54,9 @@ function dumpSavingLooper(context, list, header) {
 	    				? stack_length = 0 
 	    				: stack_length = arr.app.activity_stack.length-1;
 	        		header.activity_name = arr.app.activity_stack[stack_length];
+	        		header.start_time = format('yyyy-MM-dd hh:mm:00', new Date(arr.duration_time.start));
+	        		header.end_time = format('yyyy-MM-dd hh:mm:00', new Date(arr.duration_time.end));
 	        		let resHead = JSON.parse(JSON.stringify(header));
-	        		resHead.today = format('yyyy-MM-dd hh:mm:00', new Date(arr.duration_time.start));
 
 	        		// dosen't have any activity name
 	        		if (resHead.activity_name == null) {
@@ -98,7 +99,15 @@ function dumpSavingLooper(context, list, header) {
 	        							+ arr.os.cpu.system 
 	        							+ arr.os.cpu.idle;
 	        					let user_rate = (arr.os.cpu.user/total) * 100;
+	        					// TODO 저장되는 Raw의 %를 몇 %로 할꺼냐 정할 것
+	        					// Math.floor() : 소수점 버림, 정수형 반환
+								// Math.round() : 소수점 반올림, 정수형 반환
+								// 소수점 버리고 10 단위로 저장
+	        					let cpu_raw_rate = Math.floor((arr.os.cpu.user/total) * 10) * 10;
 	        					insertCPU(context, key, user_rate)
+	        						.then(function() {
+	        							return insertCPURaw(context, key, cpu_raw_rate, resHead.start_time);
+	        						})
 	        						.then(inresolved)
 	        						.catch(inrejected)
 	        				});
@@ -107,7 +116,15 @@ function dumpSavingLooper(context, list, header) {
 	        				// Add Memory usage
 	        				return new Promise(function(inresolved, inrejected) {
 	        					let mem_rate = (arr.app.memory.alloc/arr.app.memory.max) * 100;
+	        					// TODO 저장되는 Raw의 %를 몇 %로 할꺼냐 정할 것
+	        					// Math.floor() : 소수점 버림, 정수형 반환
+								// Math.round() : 소수점 반올림, 정수형 반환
+								// 소수점 버리고 10 단위로 저장
+	        					let mem_raw_rate = Math.floor((arr.app.memory.alloc/arr.app.memory.max) * 10) * 10;
 	        					insertMemory(context, key, mem_rate)
+	        						.then(function() {
+	        							return insertMemoryRaw(context, key, mem_raw_rate, resHead.start_time);
+	        						})
 	        						.then(inresolved)
 	        						.catch(inrejected);
 	        				});
@@ -130,12 +147,70 @@ function dumpSavingLooper(context, list, header) {
 	        		break;
 				case "render": // Analyze rendering data
 			    	header.activity_name = arr.activity_name;
-					let rendHead = JSON.parse(JSON.stringify(header));
-			    	rendHead.today = format('yyyy-MM-dd hh:mm:ss', new Date(arr.callback_time));
-			    	// TODO
-			    	return dumpSavingLooper(context, list, header)
-    					.then(resolved)
-    					.catch(rejected);
+					if (arr.lifecycle_name === "onResume") {
+						// 그전에 가지고 있던 onCreate 나 onStart 시간을 가져옴
+						let rendHead = JSON.parse(JSON.stringify(header));
+						if (rendHead.lifecycle_start === undefined) {
+							rendHead.lifecycle_start = arr.start_time;
+							rendHead.lifecycle_end = arr.end_time;
+						} else {
+							rendHead.lifecycle_end = arr.end_time;
+						}
+
+						// 저장되있는 start 값 초기화
+						header.lifecycle_name = undefined;
+						header.lifecycle_start = undefined;
+
+						// set activity key which use all tables
+		        		let key;
+		        		getActivityKey(context, rendHead)
+		        			.then(function(result) {
+		        				// get a key
+		        				key = result;
+		        				return new Promise(function(inresolved, inrejected) {
+		        					// increase user count
+		        					insertCount(context, key)
+		        						.then(inresolved)
+		        						.catch(inrejected);
+		        				});
+		        			})
+		        			.then(function() {
+		        				return new Promise(function(inresolved, inrejected) {
+		        					// Add CPU usage
+		        					let total = arr.os.cpu.user 
+		        							+ arr.os.cpu.nice 
+		        							+ arr.os.cpu.system 
+		        							+ arr.os.cpu.idle;
+		        					let user_rate = (arr.os.cpu.user/total) * 100;
+		        					insertRender(context, key, user_rate)
+		        						.then(inresolved)
+		        						.catch(inrejected)
+		        				});
+		        			})
+		        			.then(function() {
+		        				return dumpSavingLooper(context, list, header)
+		        					.then(resolved)
+		        					.catch(rejected);
+		        			})
+		        			.catch(function(err) {
+		        				// Occurred an error by server
+				            	context.connection.rollback();
+				            	mysqlSetting.releaseConnection(context);
+					            var error = new Error(err);
+					            error.status = 500;
+					            console.error(err);
+					            isFail = error;
+					            return rejected(isFail);
+		        			});
+	        		} else if (header.lifecycle_name === undefined) {
+	        			// onCreate 나 onStart 일경우 lifecycle start 등록
+        				header.lifecycle_name = arr.lifecycle_name;
+        				header.lifecycle_start = arr.start_time;
+
+				    	return dumpSavingLooper(context, list, header)
+	    					.then(resolved)
+	    					.catch(rejected);
+	        		}
 			    	break;
 				case "crash": // Analyze crash info
 					// Crash 정보 가져옴
@@ -145,7 +220,6 @@ function dumpSavingLooper(context, list, header) {
 						crash_time : arr.crash_time
 					};
 					let crashHead = JSON.parse(JSON.stringify(header));
-					crashHead.today = format('yyyy-MM-dd hh:mm:00', new Date(arr.crash_time));
 
 					let stacktraceList = arr.stacktrace.split("\n");
 					// Stacktrace 를 돌면서 Crash 이름, 위치 찾음
@@ -234,7 +308,6 @@ function dumpSavingLooper(context, list, header) {
 
     				//set activity name
 	        		let reqHead = JSON.parse(JSON.stringify(header));
-	        		reqHead.today = format('yyyy-MM-dd hh:mm:00', new Date(arr.request_time));
 	        		
 	        		// Get Activity Key
 	        		let act_host_key;
@@ -312,7 +385,7 @@ var getActivityKey = function(context, app_info) {
 	return new Promise(function(resolved, rejected) {
 		var select = [app_info.app_name, app_info.activity_name,
 			app_info.os_ver, app_info.app_ver, 
-			app_info.device_name, app_info.today];
+			app_info.device_name, app_info.start_time, app_info.end_time];
         var sql = "SELECT act_id " +
             "FROM activity_table " +
             "WHERE `app_name` = ? " +
@@ -320,7 +393,8 @@ var getActivityKey = function(context, app_info) {
             "AND `os_ver` = ? " +
             "AND `app_ver` = ? " +
             "AND `device_name` = ? " +
-            "AND `date` = ?";
+            "AND `start_time` = ? " +
+            "AND `end_time` = ? ";
         context.connection.query(sql, select, function (err, rows) {
         	var key;
             if (err) {
@@ -353,14 +427,15 @@ var newActivity = function(context, app_info) {
 	return new Promise(function(resolved, rejected) {
 		var insert = [app_info.app_name, app_info.activity_name,
 			app_info.os_ver, app_info.app_ver, 
-			app_info.device_name, app_info.today];
+			app_info.device_name, app_info.start_time, app_info.end_time];
 		var sql = "INSERT INTO activity_table SET " +
             "`app_name` = ?, " +
             "`activity_name` = ?, " +
             "`os_ver` = ?, " +
             "`app_ver` = ?, " +
             "`device_name` = ?, " +
-            "`date` = ?";
+            "`start_time` = ?, " +
+            "`end_time` = ?";
         context.connection.query(sql, insert, function (err, rows) {
         	var key;
             if (err) {
@@ -435,6 +510,37 @@ var insertCPU = function(context, key, rate) {
 };
 
 /**
+ * Add CPU Raw data of the Activity
+ * @param context - To get mysql connection on this object
+ * @param key - Resource Key
+ * @param rate - CPU raw data
+ * @param time - Dump time
+ * @return Promise
+ */
+var insertCPURaw = function(context, key, rate, time) {
+	return new Promise(function(resolved, rejected) {
+		var insert = [key, rate, time];
+        var sql = "INSERT INTO cpu_raw_table SET " +
+            "`act_craw_id` = ?, " +
+            "`cpu_raw_rate` = ?, " +
+            "`cpu_raw_count` = 1, " +
+            "`cpu_raw_time` = ? " +
+            "ON DUPLICATE KEY UPDATE " +
+            "`cpu_raw_count` = `cpu_raw_count` + 1";
+        context.connection.query(sql, insert, function (err, rows) {
+            if (err) {
+                var error = new Error("insert failed");
+                error.status = 500;
+                console.error(err);
+                return rejected(error);
+            }
+
+            return resolved();
+        });
+    });
+};
+
+/**
  * Add Memory usage of the Activity
  * @param context - To get mysql connection on this object
  * @param key - Resource Key
@@ -460,6 +566,37 @@ var insertMemory = function(context, key, rate) {
             }
 
             //context.connection.release();
+            return resolved();
+        });
+    });
+};
+
+/**
+ * Add Memory Raw data of the Activity
+ * @param context - To get mysql connection on this object
+ * @param key - Resource Key
+ * @param rate - Memory raw data
+ * @param time - Dump time
+ * @return Promise
+ */
+var insertMemoryRaw = function(context, key, rate, time) {
+	return new Promise(function(resolved, rejected) {
+		var insert = [key, rate, time];
+        var sql = "INSERT INTO memory_raw_table SET " +
+            "`act_mraw_id` = ?, " +
+            "`mem_raw_rate` = ?, " +
+            "`mem_raw_count` = 1, " +
+            "`mem_raw_time` = ? " +
+            "ON DUPLICATE KEY UPDATE " +
+            "`mem_raw_count` = `mem_raw_count` + 1";
+        context.connection.query(sql, insert, function (err, rows) {
+            if (err) {
+                var error = new Error("insert failed");
+                error.status = 500;
+                console.error(err);
+                return rejected(error);
+            }
+
             return resolved();
         });
     });
@@ -517,6 +654,36 @@ var insertCrash = function(context, key, crash_info) {
             "`crash_count` = 1 " +
             "ON DUPLICATE KEY UPDATE " +
             "`last_time` = ?, " +
+            "`crash_count` = `crash_count` + 1";
+        context.connection.query(sql, insert, function (err, rows) {
+            if (err) {
+                var error = new Error("insert failed");
+                error.status = 500;
+                console.error(err);
+                return rejected(error);
+            }
+
+            return resolved();
+        });
+    });
+};
+
+/**
+ * Add rendering information of lifecycle and increase the count
+ * @param context - To get mysql connection on this object
+ * @param key - Resource Key
+ * @param render_info - Rendering information
+ * @return Promise
+ */
+var insertRender = function(context, key, render_info) {
+	return new Promise(function(resolved, rejected) {
+		var insert = [key, render_info.ui_speed, render_info.ui_speed];
+        var sql = "INSERT INTO ui_table SET " +
+            "`act_ui_id` = ?, " +
+            "`ui_sum` = ?, " +
+            "`ui_count` = 0 " +
+            "ON DUPLICATE KEY UPDATE " +
+            "`ui_sum` = `ui_sum` + ?, " +
             "`crash_count` = `crash_count` + 1";
         context.connection.query(sql, insert, function (err, rows) {
             if (err) {
