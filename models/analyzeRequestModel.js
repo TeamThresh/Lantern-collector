@@ -6,7 +6,10 @@ exports.analyzeRequest = function(context, header, requestData) {
 		let reqHead = JSON.parse(JSON.stringify(header));
 		
 		// Get Activity Key
-		AnalyzerModel.getActivityKey(context, reqHead)
+		AnalyzerModel.getVersionKey(context, reqHead)
+			.then(function() {
+				return AnalyzerModel.getActivityKey(context, reqHead);
+			})
 			.then(function(act_host_key) {
 				return new Promise(function(inresolved, inrejected) {
 					// Add host information

@@ -1,5 +1,74 @@
 module.exports = {
 
+
+	/**
+	 * Get Version key include package name, os ver, app ver, device name
+	 * @param context - To get mysql connection on this object
+	 * @param app_info - To get resource informations
+	 * @return Promise
+	 */
+	getVersionKey : function(context, app_info) {
+		return new Promise(function(resolved, rejected) {
+			var select = [app_info.app_name, app_info.os_ver, 
+				app_info.app_ver, app_info.device_name];
+	        var sql = "SELECT ver_id " +
+	            "FROM version_table " +
+	            "WHERE `package_name` = ? " +
+	            "AND `os_ver` = ? " +
+	            "AND `app_ver` = ? " +
+	            "AND `device_name` = ? ";
+	        context.connection.query(sql, select, function (err, rows) {
+	            if (err) {
+	                var error = new Error("db failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            } else if (rows.length == 0) {
+	            	require('./analyzerModel')
+	            		.newVersion(context, app_info)
+	            		.then(function(result) {
+	            			app_info.ver_key = result;
+	            			return resolved(app_info.ver_key);
+	            		})
+	            		.catch(rejected);
+	            } else {
+	            	app_info.ver_key = rows[0].ver_id;
+	            	return resolved(context, app_info.ver_key);
+	            }
+	        });
+	    });
+	},
+
+	/**
+	 * Make Version key in Database
+	 * @param context - To get mysql connection on this object
+	 * @param app_info - To get resource informations
+	 * @return Promise
+	 */
+	newVersion : function(context, app_info) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [app_info.app_name, app_info.os_ver, 
+				app_info.app_ver, app_info.device_name];
+			var sql = "INSERT INTO version_table SET " +
+	            "`package_name` = ?, " +
+	            "`os_ver` = ?, " +
+	            "`app_ver` = ?, " +
+	            "`device_name` = ? ";
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("db failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            } else if (rows.insertId) {
+	            	app_info.ver_key = rows.insertId;
+	            }
+	            //context.connection.release();
+	            return resolved(app_info.ver_key);
+	        });
+	    });
+	},
+
 	/**
 	 * Get Activities key in Database
 	 * @param context - To get mysql connection on this object
@@ -8,20 +77,14 @@ module.exports = {
 	 */
 	getActivityKey : function(context, app_info) {
 		return new Promise(function(resolved, rejected) {
-			var select = [app_info.app_name, app_info.activity_name,
-				app_info.os_ver, app_info.app_ver, 
-				app_info.device_name, app_info.start_time, app_info.end_time];
+			var select = [app_info.ver_key, app_info.activity_name,
+				app_info.start_time];
 	        var sql = "SELECT act_id " +
 	            "FROM activity_table " +
-	            "WHERE `app_name` = ? " +
+	            "WHERE `act_ver_id` = ? " +
 	            "AND `activity_name` = ? " +
-	            "AND `os_ver` = ? " +
-	            "AND `app_ver` = ? " +
-	            "AND `device_name` = ? " +
-	            "AND `start_time` = ? " +
-	            "AND `end_time` = ? ";
+	            "AND `collect_time` = ? ";
 	        context.connection.query(sql, select, function (err, rows) {
-	        	var key;
 	            if (err) {
 	                var error = new Error("db failed");
 	                error.status = 500;
@@ -51,17 +114,12 @@ module.exports = {
 	 */
 	newActivity : function(context, app_info) {
 		return new Promise(function(resolved, rejected) {
-			var insert = [app_info.app_name, app_info.activity_name,
-				app_info.os_ver, app_info.app_ver, 
-				app_info.device_name, app_info.start_time, app_info.end_time];
+			var insert = [app_info.ver_key, app_info.activity_name,
+				app_info.start_time];
 			var sql = "INSERT INTO activity_table SET " +
-	            "`app_name` = ?, " +
+	            "`act_ver_id` = ?, " +
 	            "`activity_name` = ?, " +
-	            "`os_ver` = ?, " +
-	            "`app_ver` = ?, " +
-	            "`device_name` = ?, " +
-	            "`start_time` = ?, " +
-	            "`end_time` = ?";
+	            "`collect_time` = ? ";
 	        context.connection.query(sql, insert, function (err, rows) {
 	        	var key;
 	            if (err) {

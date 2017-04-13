@@ -28,7 +28,10 @@ exports.analyzeCrash = function(context, header, crashData) {
 					.split(" ")[1];	// at 제거
 
 				// Crash 정보 DB 저장
-	    		AnalyzerModel.getActivityKey(context, crashHead)
+	    		AnalyzerModel.getVersionKey(context, crashHead)
+	    			.then(function() {
+						return AnalyzerModel.getActivityKey(context, crashHead);
+					})
 	    			.then(function(key) {
 	    				// get a key
 	    				return new Promise(function(inresolved, inrejected) {

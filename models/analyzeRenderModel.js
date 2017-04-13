@@ -22,7 +22,10 @@ exports.analyzeRender = function(context, header, rendData) {
 
 			// set activity key which use all tables
 			let key;
-			AnalyzerModel.getActivityKey(context, rendHead)
+			AnalyzerModel.getVersionKey(context, rendHead)
+				.then(function() {
+					return AnalyzerModel.getActivityKey(context, rendHead);
+				})
 				.then(function(result) {
 					// get a key
 					key = result;
