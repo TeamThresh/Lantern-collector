@@ -173,7 +173,7 @@ module.exports = {
 		return new Promise(function(resolved, rejected) {
 			var insert = [key, rate, rate];
 	        var sql = "INSERT INTO cpu_table SET " +
-	            "`act_cpu_id` = ?, " +
+	            "`cpu_act_id` = ?, " +
 	            "`cpu_sum` = ?, " +
 	            "`cpu_count` = 1 " +
 	            "ON DUPLICATE KEY UPDATE " +
@@ -205,7 +205,7 @@ module.exports = {
 		return new Promise(function(resolved, rejected) {
 			var insert = [key, rate, time];
 	        var sql = "INSERT INTO cpu_raw_table SET " +
-	            "`act_craw_id` = ?, " +
+	            "`craw_act_id` = ?, " +
 	            "`cpu_raw_rate` = ?, " +
 	            "`cpu_raw_count` = 1, " +
 	            "`cpu_raw_time` = ? " +
@@ -235,7 +235,7 @@ module.exports = {
 		return new Promise(function(resolved, rejected) {
 			var insert = [key, rate, rate];
 	        var sql = "INSERT INTO memory_table SET " +
-	        	"`act_mem_id` = ?, " +
+	        	"`mem_act_id` = ?, " +
 	            "`mem_sum` = ?, " +
 	            "`mem_count` = 1 " +
 	            "ON DUPLICATE KEY UPDATE " +
@@ -267,7 +267,7 @@ module.exports = {
 		return new Promise(function(resolved, rejected) {
 			var insert = [key, rate, time];
 	        var sql = "INSERT INTO memory_raw_table SET " +
-	            "`act_mraw_id` = ?, " +
+	            "`mraw_act_id` = ?, " +
 	            "`mem_raw_rate` = ?, " +
 	            "`mem_raw_count` = 1, " +
 	            "`mem_raw_time` = ? " +
@@ -297,7 +297,7 @@ module.exports = {
 		return new Promise(function(resolved, rejected) {
 			var insert = [key, host.name, host.status, host.speed, host.speed];
 	        var sql = "INSERT INTO obc_table SET " +
-	            "`act_host_id` = ?, " +
+	            "`host_act_id` = ?, " +
 	            "`host_name` = ?, " +
 	            "`host_status` = ?, " +
 	            "`host_speed` = ?, " +
@@ -328,11 +328,13 @@ module.exports = {
 	insertCrash : function(context, key, crash_info) {
 		return new Promise(function(resolved, rejected) {
 			var insert = [key, crash_info.crash_name, crash_info.crash_location,
-						crash_info.crash_time, crash_info.crash_time, crash_info.crash_time];
+						crash_info.stacktrace, crash_info.crash_time, 
+						crash_info.crash_time, crash_info.crash_time];
 	        var sql = "INSERT INTO crash_table SET " +
-	            "`act_crash_id` = ?, " +
+	            "`crash_act_id` = ?, " +
 	            "`crash_name` = ?, " +
 	            "`crash_location` = ?, " +
+	            "`crash_stacktrace` = ?, " +
 	            "`first_time` = ?, " +
 	            "`last_time` = ?, " +
 	            "`crash_count` = 1 " +
@@ -361,14 +363,43 @@ module.exports = {
 	 */
 	insertRender : function(context, key, render_info) {
 		return new Promise(function(resolved, rejected) {
-			var insert = [key, render_info, render_info];
+			var insert = [key, render_info.ui_speed, render_info.lifecycle_start];
 	        var sql = "INSERT INTO ui_table SET " +
-	            "`act_ui_id` = ?, " +
-	            "`ui_sum` = ?, " +
-	            "`ui_count` = 1 " +
+	            "`ui_act_id` = ?, " +
+	            "`ui_speed` = ?, " +
+	            "`ui_count` = 1, " +
+	            "`ui_time` = ? " +
 	            "ON DUPLICATE KEY UPDATE " +
-	            "`ui_sum` = `ui_sum` + ?, " +
 	            "`ui_count` = `ui_count` + 1";
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
+
+	            return resolved();
+	        });
+	    });
+	},
+
+	/**
+	 * Add link between activities
+	 * @param context - To get mysql connection on this object
+	 * @param key - Resource Key
+	 * @param render_info - Rendering information
+	 * @return Promise
+	 */
+	insertLink : function(context, key, render_info) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [key, render_info.before_activity];
+	        var sql = "INSERT INTO link_table SET " +
+	            "`link_act_id` = ?, " +
+	            "`before_act_id` = ?, " +
+	            "`link_count` = 1 " +
+	            "ON DUPLICATE KEY UPDATE " +
+	            "`link_count` = `link_count` + 1";
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
 	                var error = new Error("insert failed");

@@ -2,13 +2,14 @@ var AnalyzerModel = require('./analyzerModel');
 
 exports.analyzeRender = function(context, header, rendData) {
 	return new Promise(function(resolved, rejected) {
-		// 최상위 액티비티 변경
-		header.activity_name = rendData.activity_name;
-
 		// onResume 일 경우 저장 작업 시작
 		if (rendData.lifecycle_name === "onResume") {
+			// 최상위 액티비티 변경
+			header.activity_name = rendData.activity_name;
+
 			// 그전에 가지고 있던 onCreate 나 onStart 시간을 가져옴
 			let rendHead = JSON.parse(JSON.stringify(header));
+
 			if (rendHead.lifecycle_start === undefined) {
 				rendHead.lifecycle_start = rendData.start_time;
 				rendHead.lifecycle_end = rendData.end_time;
@@ -37,15 +38,25 @@ exports.analyzeRender = function(context, header, rendData) {
 					});
 				})
 				.then(function() {
+					if (rendHead.before_activity === undefined) {
+						return Promise.resolved;
+					}
+					// Add activity link
+					return AnalyzerModel.insertLink(context, key, rendHead);
+				})
+				.then(function() {
 					return new Promise(function(inresolved, inrejected) {
 						// Add UI Rendering Speed
-						let ui_speed = rendHead.lifecycle_end - rendHead.lifecycle_start;
-						AnalyzerModel.insertRender(context, key, ui_speed)
+						rendHead.ui_speed = rendHead.lifecycle_end - rendHead.lifecycle_start;
+						
+						AnalyzerModel.insertRender(context, key, rendHead)
 							.then(inresolved)
 							.catch(inrejected)
 					});
 				})
 				.then(function() {
+					// link 계산을 위해 before key를 저장
+					header.before_activity = key;
 					return resolved();
 				})
 				.catch(function(err) {
@@ -58,7 +69,8 @@ exports.analyzeRender = function(context, header, rendData) {
 			header.lifecycle_start = rendData.start_time;
 
 	    	return resolved();
+		} else {
+			return resolved();
 		}
-		return resolved();
 	});
 }
