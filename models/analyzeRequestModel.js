@@ -16,7 +16,7 @@ exports.analyzeRequest = function(context, header, requestData) {
 					let host = {
     					name : requestData.host,
     					speed : (requestData.response_time - requestData.request_time),
-    					status : 200 // TODO 데이터 셋에서 추가할 것
+    					status : requestData.status
     				};
 
 					return AnalyzerModel.insertOutboundCall(context, act_host_key, host)
