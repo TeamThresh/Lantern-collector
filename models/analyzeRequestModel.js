@@ -1,3 +1,4 @@
+var format = require('date-format');
 var AnalyzerModel = require('./analyzerModel');
 
 exports.analyzeRequest = function(context, header, requestData) {
