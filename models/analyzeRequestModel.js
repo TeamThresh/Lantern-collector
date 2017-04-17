@@ -4,6 +4,8 @@ exports.analyzeRequest = function(context, header, requestData) {
 	return new Promise(function(resolved, rejected) {
 		//set activity name
 		let reqHead = JSON.parse(JSON.stringify(header));
+		reqHead.start_time = format('yyyy-MM-dd hh:mm:00', 
+			new Date(requestData.request_time));
 		
 		// Get Activity Key
 		AnalyzerModel.getVersionKey(context, reqHead)

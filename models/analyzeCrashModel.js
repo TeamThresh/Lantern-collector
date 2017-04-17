@@ -5,6 +5,8 @@ exports.analyzeCrash = function(context, header, crashData) {
 	return new Promise(function(resolved, rejected) {
 		// Crash 정보 가져옴
 		let crashHead = JSON.parse(JSON.stringify(header));
+		crashHead.start_time = format('yyyy-MM-dd hh:mm:00', 
+				new Date(crashData.crash_time));
 		
 		// stacktrace 의 첫줄에 있는 Exception 이름도 가져와야 함
 		extractCrashInfo(crashData.stacktrace, 

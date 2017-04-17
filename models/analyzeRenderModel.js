@@ -7,9 +7,11 @@ exports.analyzeRender = function(context, header, rendData) {
 			// 최상위 액티비티 변경
 			header.activity_name = rendData.activity_name;
 
-			// 그전에 가지고 있던 onCreate 나 onStart 시간을 가져옴
 			let rendHead = JSON.parse(JSON.stringify(header));
-
+			rendHead.start_time = format('yyyy-MM-dd hh:mm:00', 
+				new Date(rendData.start_time));
+			
+			// 그전에 가지고 있던 onCreate 나 onStart 시간을 가져옴
 			if (rendHead.lifecycle_start === undefined) {
 				rendHead.lifecycle_start = rendData.start_time;
 				rendHead.lifecycle_end = rendData.end_time;

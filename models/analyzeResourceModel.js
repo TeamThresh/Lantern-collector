@@ -10,9 +10,11 @@ exports.analyzeResource = function(context, header, resData) {
 			? stack_length = 0 
 			: stack_length = resData.app.activity_stack.length-1;
 		header.activity_name = resData.app.activity_stack[stack_length];
-		header.start_time = format('yyyy-MM-dd hh:mm:00', new Date(resData.duration_time.start));
-		header.end_time = format('yyyy-MM-dd hh:mm:00', new Date(resData.duration_time.end));
 		let resHead = JSON.parse(JSON.stringify(header));
+		resHead.start_time = format('yyyy-MM-dd hh:mm:00', 
+			new Date(resData.duration_time.start));
+		resHead.end_time = format('yyyy-MM-dd hh:mm:00', 
+			new Date(resData.duration_time.end));
 
 		// dosen't have any activity name
 		if (resHead.activity_name == null) {
