@@ -33,7 +33,7 @@ module.exports = {
                 return err instanceof Number ? next(err) : next(500);
             }
             // Lookup table에 국가 코드 조회
-            var city = cityLookup.get(data.dump.device_info);
+            var city = cityLookup.get(data.dump.device_info.ip);
 
             // 국가코드, 국가 이름, 도시 이름
             data.dump.device_info.location = {
