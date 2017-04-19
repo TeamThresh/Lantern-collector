@@ -369,7 +369,7 @@ module.exports = {
 	 */
 	insertRender : function(context, key, render_info) {
 		return new Promise(function(resolved, rejected) {
-			var insert = [key, render_info.ui_speed, render_info.lifecycle_start];
+			var insert = [key, render_info.ui_speed, render_info.start_time];
 	        var sql = "INSERT INTO ui_table SET " +
 	            "`ui_act_id` = ?, " +
 	            "`ui_speed` = ?, " +
@@ -419,3 +419,4 @@ module.exports = {
 	    });
 	}
 }
+

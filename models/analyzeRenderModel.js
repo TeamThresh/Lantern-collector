@@ -1,3 +1,4 @@
+var format = require('date-format');
 var AnalyzerModel = require('./analyzerModel');
 
 exports.analyzeRender = function(context, header, rendData) {
@@ -6,7 +7,6 @@ exports.analyzeRender = function(context, header, rendData) {
 		if (rendData.lifecycle_name === "onResume") {
 			// 최상위 액티비티 변경
 			header.activity_name = rendData.activity_name;
-
 			let rendHead = JSON.parse(JSON.stringify(header));
 			rendHead.start_time = format('yyyy-MM-dd hh:mm:00', 
 				new Date(rendData.start_time));
