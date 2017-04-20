@@ -75,7 +75,7 @@ module.exports = {
             });
         });
 */
-    }
+    },
 
     uploadFromQueue: function (msg) {
         saveDump(msg);
