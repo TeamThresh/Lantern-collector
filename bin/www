@@ -7,7 +7,7 @@
 var app = require('../app');
 var debug = require('debug')('Lantern-collector:server');
 var http = require('http');
-var consumer = require('../rabbitmq.consumer');
+var consumer = require('../rabbitmq/consumer.js');
 
 /**
  * Get port from environment and store in Express.
