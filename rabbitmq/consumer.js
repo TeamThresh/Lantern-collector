@@ -8,6 +8,7 @@ exports.startConsumer = function() {
 
 			ch.assertQueue(q, {durable : false});
 			ch.consume(q, function(msg) {
+				console.log(msg.content.toString());
 				api.resourceController.uploadFromQueue(msg.content.toString());
 			});
 		});
