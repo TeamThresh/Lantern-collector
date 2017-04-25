@@ -26,11 +26,18 @@ exports.saveAnalysisDump = function(obj, callback) {
         .then(mysqlSetting.getConnection)
         .then(mysqlSetting.connBeginTransaction)
         .then(function(context) {
+        	context.isFail = false;
         	// start analyzing
         	return new Promise(function(resolved, rejected) {
-        		dumpSavingLooper(context, obj.data, header)
-        			.then(resolved)
-        			.catch(rejected);
+        		dumpSavingLooper(context, obj.data, header, function(err) {
+        			if (err) {
+        				context.connection.rollback();
+						mysqlSetting.releaseConnection(context);
+						return rejected(err);
+        			}
+        			console.log("Looper 반환 완료");
+    				return resolved(context);
+        		});
         	});
         })
 	    .then(mysqlSetting.commitTransaction)
@@ -49,106 +56,64 @@ exports.saveAnalysisDump = function(obj, callback) {
  * @param header - Dump data header (Which use all data type)
  * @return Promise
  */
-function dumpSavingLooper(context, list, header) {
-	context.isFail = false;
+ var i = 1;
+function dumpSavingLooper(context, list, header, callback) {
+	console.log("dump Looper : "+ (i++));
+	if (!context.isFail) {
 
-	return new Promise(function (resolved, rejected) {
-		if (list.length != 0) {
-			let arr = list.splice(0, 1)[0];
+			if (list.length != 0) {
+				let arr = list.splice(0, 1)[0];
 
-			// switch each array object's type
-	    	switch(arr.type) {
-	    		case "res": // Analyze resource
-	    			AnalyzerResourceModel
-	    				.analyzeResource(context, header, arr)
-	    				.then(function() {
-							if (list.length == 0) {
-								if (context.isFail) return rejected(context.isFail);
-						        //return resolved();
-						    }
-							return dumpSavingLooper(context, list, header)
-								.then(resolved(context));
-	    				})
-	    				.catch(function(err) {
-			    			context.connection.rollback();
-			            	mysqlSetting.releaseConnection(context);
-				            var error = new Error(err);
-				            error.status = 500;
-				            console.error(err);
-				            context.isFail = error;
-				            return rejected(context.isFail);
-	    				})
-	        		break;
-				case "render": // Analyze rendering data
-			    	AnalyzerRenderModel
-			    		.analyzeRender(context, header, arr)
-			    		.then(function() {
-							if (list.length == 0) {
-								if (context.isFail) return rejected(context.isFail);
-						        //return resolved();
-						    }
-							return dumpSavingLooper(context, list, header)
-								.then(resolved(context));
-			    		})
-			    		.catch(function(err) {
-			    			context.connection.rollback();
-			            	mysqlSetting.releaseConnection(context);
-				            var error = new Error(err);
-				            error.status = 500;
-				            console.error(err);
-				            context.isFail = error;
-				            return rejected(context.isFail);
-			    		})
-			    	break;
-				case "crash": // Analyze crash info
-					AnalyzerCrashModel
-						.analyzeCrash(context, header, arr)
-						.then(function() {
-							if (list.length == 0) {
-								if (context.isFail) return rejected(context.isFail);
-						        //return resolved();
-						    }
-							return dumpSavingLooper(context, list, header)
-								.then(resolved(context));
-						})
-						.catch(function(err) {
-			            	// if need rollback remove comment
-			            	context.connection.rollback();
-			            	mysqlSetting.releaseConnection(context);
-				            var error = new Error(err);
-				            error.status = 500;
-				            console.error(error);
-							context.isFail = error;
-        					return rejected(context.isFail);
-						});
-
-			        break;
-				case "request": // Analyze network outbound call
-    				AnalyzerRequestModel
-    					.analyzeRequest(context, header, arr)
-    					.then(function() {
-							if (list.length == 0) {
-								if (context.isFail) return rejected(context.isFail);
-						        //return resolved(context);
-						    }
-						    return dumpSavingLooper(context, list, header)
-						    	.then(resolved(context));
-    					})
-    					.catch(function(err) {
-			            	context.connection.rollback();
-			            	mysqlSetting.releaseConnection(context);
-				            var error = new Error(err);
-				            error.status = 500;
-				            console.error(error);
-    						context.isFail = err;
-				        	return rejected(context.isFail);
-    					});
-			        break;
+				// switch each array object's type
+		    	switch(arr.type) {
+		    		case "res": // Analyze resource
+		    			AnalyzerResourceModel
+		    				.analyzeResource(context, header, arr)
+		    				.catch(function(err) {
+					            console.error(err);
+					            context.isFail = err;
+					            return callback(context.isFail);
+		    				});
+	    				return dumpSavingLooper(context, list, header, callback);
+		        		break;
+					case "render": // Analyze rendering data
+				    	AnalyzerRenderModel
+				    		.analyzeRender(context, header, arr)
+				    		.catch(function(err) {
+					            console.error(err);
+					            context.isFail = err;
+					            return callback(context.isFail);
+				    		});
+			    		return dumpSavingLooper(context, list, header, callback);
+				    	break;
+					case "crash": // Analyze crash info
+						AnalyzerCrashModel
+							.analyzeCrash(context, header, arr)
+							.catch(function(err) {
+					            console.error(err);
+								context.isFail = err;
+	        					return callback(context.isFail);
+							});
+						return dumpSavingLooper(context, list, header, callback);
+				        break;
+					case "request": // Analyze network outbound call
+	    				AnalyzerRequestModel
+	    					.analyzeRequest(context, header, arr)
+	    					.catch(function(err) {
+					            console.error(err);
+	    						context.isFail = err;
+								return callback(context.isFail);
+	    					});
+    					return dumpSavingLooper(context, list, header, callback);
+				        break;
+				}
+			} else {
+				// 반환
+				console.log("Looper 반환");
+				return callback();
 			}
-		} else {
-			// 반환
-			return resolved(context);
-		}
-	});
 	
+	} else {
+		console.log("에러 발 생 !!");
+	}
 }
