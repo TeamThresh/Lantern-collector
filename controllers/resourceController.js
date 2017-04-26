@@ -91,6 +91,7 @@ function saveDump(dump) {
         }
         // Lookup table에 국가 코드 조회
         
+	dump = JSON.parse(dump);
         var city = cityLookup.get(dump.device_info.ip);
 
         // 국가코드, 국가 이름, 도시 이름
@@ -117,16 +118,10 @@ function saveDump(dump) {
                             console.error(err);
                             return err instanceof Number ? next(err) : next(500);
                         }
-                        res.statusCode = 200;
-                        return res.json({
-                            msg: "complete"
-                        });
+			console.info("{msg: complete}");
                     });
             } else {
-                res.statusCode = 200;
-                return res.json({
-                    msg: "complete"
-                });
+		console.info("{msg: complete}");
             }
         });
     });
