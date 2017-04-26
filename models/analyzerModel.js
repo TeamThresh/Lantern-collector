@@ -10,13 +10,16 @@ module.exports = {
 	getVersionKey : function(context, app_info) {
 		return new Promise(function(resolved, rejected) {
 			var select = [app_info.app_name, app_info.os_ver, 
-				app_info.app_ver, app_info.device_name];
+				app_info.app_ver, app_info.device_name,
+				app_info.country_name, app_info.code];
 	        var sql = "SELECT ver_id " +
 	            "FROM version_table " +
 	            "WHERE `package_name` = ? " +
 	            "AND `os_ver` = ? " +
 	            "AND `app_ver` = ? " +
-	            "AND `device_name` = ? ";
+	            "AND `device_name` = ? " +
+	            "AND `location_name` = ? " +
+	            "AND `location_code` = ? ";
 	        context.connection.query(sql, select, function (err, rows) {
 	            if (err) {
 	                var error = new Error("db failed");
