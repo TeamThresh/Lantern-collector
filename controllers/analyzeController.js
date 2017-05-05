@@ -51,7 +51,8 @@ exports.saveAnalysisDump = function(obj, callback) {
         			.saveCallstack(context, header)
         			.then(function() {
         				return resolved(context);
-        			});
+        			})
+        			.catch(rejected);
         	});
         })
 	    .then(mysqlSetting.commitTransaction)
@@ -72,7 +73,7 @@ exports.saveAnalysisDump = function(obj, callback) {
  */
 let i = 1;
 function dumpSavingLooper(context, list, header, callback) {
-	//console.log("dump Looper : "+ (i++));
+	// TODO 비동기로 바꿀 것
 	if (!context.isFail) {
 
 			if (list.length != 0) {
@@ -84,60 +85,65 @@ function dumpSavingLooper(context, list, header, callback) {
 		    			AnalyzerResourceModel
 		    				.analyzeResource(context, header, arr)
 		    				.then(function() {
-		    					if (++i == length)
-		    						return callback();
+		    					return dumpSavingLooper(context, list, header, callback);
+//		    					if (++i == length)
+//		    						return callback();
 		    				})
 		    				.catch(function(err) {
 					            console.error(err);
 					            context.isFail = err;
 					            return callback(context.isFail);
 		    				});
-	    				return dumpSavingLooper(context, list, header, callback);
+//	    				return dumpSavingLooper(context, list, header, callback);
 		        		break;
 					case "render": // Analyze rendering data
 				    	AnalyzerRenderModel
 				    		.analyzeRender(context, header, arr)
 				    		.then(function() {
-		    					if (++i == length)
-		    						return callback();
+				    			return dumpSavingLooper(context, list, header, callback);
+//		    					if (++i == length)
+//		    						return callback();
 		    				})
 				    		.catch(function(err) {
 					            console.error(err);
 					            context.isFail = err;
 					            return callback(context.isFail);
 				    		});
-			    		return dumpSavingLooper(context, list, header, callback);
+//			    		return dumpSavingLooper(context, list, header, callback);
 				    	break;
 					case "crash": // Analyze crash info
 						AnalyzerCrashModel
 							.analyzeCrash(context, header, arr)
 							.then(function() {
-		    					if (++i == length)
-		    						return callback();
+								return dumpSavingLooper(context, list, header, callback);
+//		    					if (++i == length)
+//		    						return callback();
 		    				})
 							.catch(function(err) {
 					            console.error(err);
 								context.isFail = err;
 	        					return callback(context.isFail);
 							});
-						return dumpSavingLooper(context, list, header, callback);
+//						return dumpSavingLooper(context, list, header, callback);
 				        break;
 					case "request": // Analyze network outbound call
 	    				AnalyzerRequestModel
 	    					.analyzeRequest(context, header, arr)
 	    					.then(function() {
-		    					if (++i == length)
-		    						return callback();
+	    						return dumpSavingLooper(context, list, header, callback);
+		    					//if (++i == length)
+//		    						return callback();
 		    				})
 	    					.catch(function(err) {
 					            console.error(err);
 	    						context.isFail = err;
 								return callback(context.isFail);
 	    					});
-    					return dumpSavingLooper(context, list, header, callback);
+//    					return dumpSavingLooper(context, list, header, callback);
 				        break;
 				}
 			} else {
+				return callback();
 				console.log("Looper 전부 실행");
 			}
 	

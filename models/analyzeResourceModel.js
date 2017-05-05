@@ -153,10 +153,10 @@ exports.saveCallstack = function(context, header) {
 
 		return AnalyzerModel.insertCallstackName(context, stackname_array)
 			.then(function() {
-				return new Promise(function(resolved, rejected) {
+				return new Promise(function(inresolved, inrejected) {
 					AnalyzerModel.insertCallstack(context, insert_array)
-						.then(resolved)
-						.catch(rejected);
+						.then(inresolved)
+						.catch(inrejected);
 				});
 			})
 			.then(resolved)

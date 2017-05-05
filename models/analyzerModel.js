@@ -52,7 +52,7 @@ module.exports = {
 			var insert = [app_info.app_name, app_info.os_ver, 
 				app_info.app_ver, app_info.device_name,
 				app_info.country_name, app_info.code];
-			var sql = "INSERT INTO version_table SET " +
+			var sql = "INSERT IGNORE INTO version_table SET " +
 	            "`ver_id` = (SELECT ver_id FROM " +
 	            "	(SELECT ver_id " +
 				"	FROM version_table " +
