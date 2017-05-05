@@ -69,11 +69,98 @@ exports.analyzeResource = function(context, header, resData) {
 				});
 			})
 			.then(function() {
+				// Callstack saving
+				return new Promise(function(inresolved, inrejected) {
+					if (header.thread_trace == undefined)
+						header.thread_trace = {};
+					resData.app.thread_trace.forEach(function(thread) {
+						if (header.thread_trace[key] == undefined) 
+							header.thread_trace[key] = {};
+						if (header.thread_trace[key][thread.thread_name] == undefined)
+							header.thread_trace[key][thread.thread_name] = {};
+						thread.trace_list.forEach(function(trace, index) {
+							let words = trace.split('(')[0].split('.')
+							let funcname = words[words.length-1];
+
+							if (header.thread_trace[key][thread.thread_name][funcname] == undefined) {
+								header.thread_trace[key][thread.thread_name][funcname] = [{
+									raw : trace,
+									count : 1,
+									uplevel : thread.trace_list[index-1] == undefined
+									 ? null : thread.trace_list[index-1]
+								}];
+							} else {
+								let result = header.thread_trace[key][thread.thread_name][funcname]
+									.some(function (item, idx) {
+									if (item.raw == trace
+									&& item.uplevel == thread.trace_list[index-1]) {
+										item.count += 1;
+										return true;
+									} else {
+										return false;
+									}
+								});
+
+								if (!result) {
+									header.thread_trace[key][thread.thread_name][funcname].push({
+										raw : trace,
+										count : 1,
+										uplevel : thread.trace_list[index-1] == undefined
+										 ? null : thread.trace_list[index-1]
+									});
+								}	
+							}
+						});
+					});
+
+					return inresolved();
+				});
+			})
+			.then(function() {
 				return resolved();
 			})
 			.catch(function(err) {
 				// Occurred an error by server
 	            return rejected(err);
 			});
+	});
+};
+
+exports.saveCallstack = function(context, header) {
+	return new Promise(function(resolved, rejected) {
+		let act_id_list = Object.keys(header.thread_trace);
+		let insert_array = [];
+		let stackname_array = [];
+
+		act_id_list.forEach(function(act_id) {
+			let thread_name_list = Object.keys(header.thread_trace[act_id]);
+			thread_name_list.forEach(function(thread_name) {
+				let func_name_list = Object.keys(header.thread_trace[act_id][thread_name]);
+				func_name_list.forEach(function(func_name) {
+					header.thread_trace[act_id][thread_name][func_name].forEach(function(each_stack) {
+						insert_array.push({
+							each_array : [act_id, thread_name,
+								each_stack.count],
+							stack_name : each_stack.raw,
+							up_stack_name : each_stack.uplevel
+						});
+
+						stackname_array.push([func_name, each_stack.raw]);
+					});
+				});
+			});
+		});
+
+		return AnalyzerModel.insertCallstackName(context, stackname_array)
+			.then(function() {
+				return new Promise(function(resolved, rejected) {
+					AnalyzerModel.insertCallstack(context, insert_array)
+						.then(resolved)
+						.catch(rejected);
+				});
+			})
+			.then(resolved)
+			.catch(rejected);
+			
 	});
 };

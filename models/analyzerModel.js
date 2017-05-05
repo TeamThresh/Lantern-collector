@@ -29,9 +29,8 @@ module.exports = {
 	            } else if (rows.length == 0) {
 	            	require('./analyzerModel')
 	            		.newVersion(context, app_info)
-	            		.then(function(result) {
-	            			app_info.ver_key = result;
-	            			return resolved(app_info.ver_key);
+	            		.then(function() {
+	            			return resolved(context, app_info.ver_key);
 	            		})
 	            		.catch(rejected);
 	            } else {
@@ -51,23 +50,34 @@ module.exports = {
 	newVersion : function(context, app_info) {
 		return new Promise(function(resolved, rejected) {
 			var insert = [app_info.app_name, app_info.os_ver, 
-				app_info.app_ver, app_info.device_name];
+				app_info.app_ver, app_info.device_name,
+				app_info.country_name, app_info.code];
 			var sql = "INSERT INTO version_table SET " +
+	            "`ver_id` = (SELECT ver_id FROM " +
+	            "	(SELECT ver_id " +
+				"	FROM version_table " +
+				"	ORDER BY ver_id DESC " +
+				"	LIMIT 1) tmp)+1, " +
 	            "`package_name` = ?, " +
 	            "`os_ver` = ?, " +
 	            "`app_ver` = ?, " +
-	            "`device_name` = ? ";
+	            "`device_name` = ?, " +
+	            "`location_name` = ?, " +
+	            "`location_code` = ? ";
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("db failed");
-	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	            	if (err.code == "ER_DUP_FIELDNAME") {
+						return resolved(getVersionKey(context, app_info));
+	            	} else {
+		                var error = new Error(err.Error);
+		                error.status = 500;
+		                //console.error(err);
+		                return rejected(error);
+		            }
 	            } else if (rows.insertId) {
 	            	app_info.ver_key = rows.insertId;
+	            	return resolved();
 	            }
-	            //context.connection.release();
-	            return resolved(app_info.ver_key);
 	        });
 	    });
 	},
@@ -409,6 +419,80 @@ module.exports = {
 	            "`link_count` = 1 " +
 	            "ON DUPLICATE KEY UPDATE " +
 	            "`link_count` = `link_count` + 1";
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
+
+	            return resolved();
+	        });
+	    });
+	},
+
+	/**
+	 * Add callstack
+	 * @param context - To get mysql connection on this object
+	 * @param fullarray - All stacktrace count
+	 * @return Promise
+	 */
+	insertCallstack : function(context, fullarray) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [];
+	        var sql = "INSERT INTO callstack_table " +
+			"(call_act_id, thread_name, call_count, call_clevel, " +
+			"call_uplevel) VALUES ";
+
+			let length = fullarray.length - 1;
+			fullarray.forEach(function(arr, index) {
+				sql += "(?, " +
+				"(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?), " +
+				"(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?))";
+				insert.push(arr.each_array, arr.stack_name, arr.up_stack_name);
+				if (index < length) {
+					sql += ",";
+				}
+			});
+
+			sql += "ON DUPLICATE KEY UPDATE " +
+				"call_count = VALUES(call_count)";
+
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
+
+	            return resolved();
+	        });
+	    });
+	},
+
+	/**
+	 * Add stack name
+	 * @param context - To get mysql connection on this object
+	 * @param fullarray - All stacktrace
+	 * @return Promise
+	 */
+	insertCallstackName : function(context, fullarray) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [];
+	        var sql = "INSERT IGNORE INTO callstack_name_table " +
+			"(callstack_func, callstack_name) VALUES ";
+			
+			let length = fullarray.length - 1;
+			fullarray.forEach(function(arr, index) {
+				sql += "(?)";
+				insert.push(arr);
+				if (index < length) {
+					sql += ",";
+				}
+			});
+
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
 	                var error = new Error("insert failed");
