@@ -7,6 +7,7 @@ var AnalyzerResourceModel = require("../models/analyzeResourceModel");
 var AnalyzerRequestModel = require("../models/analyzeRequestModel");
 var AnalyzerRenderModel = require("../models/analyzeRenderModel");
 var AnalyzerCrashModel = require("../models/analyzeCrashModel");
+var AnalyzerUserModel = require("../models/analyzeUserModel");
 
 /**
  * To dump client resource data into Analysis Database
@@ -21,6 +22,7 @@ exports.saveAnalysisDump = function(obj, callback) {
 		os_ver : obj.device_info.os,
 		app_ver : obj.device_info.app,
 		device_name : obj.device_info.device,
+		uuid : obj.device_info.uuid,
 		country_name : obj.device_info.location.country_name,
 		code : obj.device_info.location.code
 	};
@@ -28,6 +30,16 @@ exports.saveAnalysisDump = function(obj, callback) {
 	mysqlSetting.getPool()
         .then(mysqlSetting.getConnection)
         .then(mysqlSetting.connBeginTransaction)
+        .then(function(context) {
+        	return new Promise(function(resolved, rejected) {
+        		AnalyzerUserModel.addUserConnect(context, header)
+        			.then(function(retention) {
+						header.retention = retention;
+        				return resolved(context);
+        			})
+        			.catch(rejected);
+        	});
+        })
         .then(function(context) {
         	context.isFail = false;
         	// start analyzing

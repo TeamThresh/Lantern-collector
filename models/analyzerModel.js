@@ -153,14 +153,18 @@ module.exports = {
 	 * Increase user count of the Activity
 	 * @param context - To get mysql connection on this object
 	 * @param key - Resource Key
+	 * @param retention - Retention boolean
 	 * @return Promise
 	 */
-	insertCount : function(context, key) {
+	insertCount : function(context, key, retention) {
 		return new Promise(function(resolved, rejected) {
 			var update = [key];
 	        var sql = "UPDATE activity_table SET " +
-	            "`user_count` = `user_count` + 1 " +
-	            "WHERE `act_id` = ? ";
+	            "`user_count` = `user_count` + 1 ";
+            if (retention)
+            	sql += ",`user_retention_count` = `user_retention_count` + 1 ";
+	        sql += "WHERE `act_id` = ? ";
+	        
 	        context.connection.query(sql, update, function (err, rows) {
 	            if (err) {
 	                var error = new Error("insert failed");
@@ -502,6 +506,38 @@ module.exports = {
 	            }
 
 	            return resolved();
+	        });
+	    });
+	},
+
+	/**
+	 * Add user connection time
+	 * @param context - To get mysql connection on this object
+	 * @param data - User information
+	 * @return Promise
+	 */
+	insertUserConnection : function(context, data) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [data.uuid, data.connection_time, data.app_name,
+				data.connection_time];
+	        var sql = "INSERT INTO user_table SET " +
+			"`uuid` = ?, " +
+			"`last_connection` = ?, " +
+			"`user_package_name` = ? " +
+			"ON DUPLICATE KEY UPDATE " +
+			"`last_connection` = ? ";
+
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
+
+	            if (rows.insertId == 0)
+	            	return resolved(true);
+	            return resolved(false);
 	        });
 	    });
 	}

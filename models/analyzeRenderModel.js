@@ -34,7 +34,7 @@ exports.analyzeRender = function(context, header, rendData) {
 					key = result;
 					return new Promise(function(inresolved, inrejected) {
 						// increase user count
-						AnalyzerModel.insertCount(context, key)
+						AnalyzerModel.insertCount(context, key, header.retention)
 							.then(inresolved)
 							.catch(inrejected);
 					});
