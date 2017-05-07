@@ -518,14 +518,15 @@ module.exports = {
 	 */
 	insertUserConnection : function(context, data) {
 		return new Promise(function(resolved, rejected) {
-			var insert = [data.uuid, data.connection_time, data.app_name,
-				data.connection_time];
+			var insert = [data.uuid, data.connection_time, data.ver_key,
+			data.connection_time];
 	        var sql = "INSERT INTO user_table SET " +
 			"`uuid` = ?, " +
 			"`last_connection` = ?, " +
-			"`user_package_name` = ? " +
+			"`user_ver_id` = ? " +
 			"ON DUPLICATE KEY UPDATE " +
-			"`last_connection` = ? ";
+			"`last_connection` = ?, " +
+			"`user_ver_id` = VALUES(user_ver_id)";
 
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
