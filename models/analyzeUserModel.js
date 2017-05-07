@@ -3,14 +3,18 @@ var AnalyzerModel = require('./analyzerModel');
 
 exports.addUserConnect = function(context, header) {
 	return new Promise(function(resolved, rejected) {
-		let user_info = {
-			uuid : header.uuid,
-			app_name : header.app_name,
-			connection_time : format('yyyy-MM-dd hh:mm:00', 
-				new Date())
-		};
+		let userHeader = JSON.parse(JSON.stringify(header));
+		userHeader.connection_time = format('yyyy-MM-dd hh:mm:00', new Date());
 
-		AnalyzerModel.insertUserConnection(context, user_info)
+		AnalyzerModel
+			.getVersionKey(context, userHeader)
+			.then(function() {
+				return new Promise(function(inresolved, inrejected) {
+					AnalyzerModel.insertUserConnection(context, userHeader)
+						.then(inresolved)
+						.catch(inrejected);
+				});
+			})
 			.then(function(retention) {
 				// 복귀 유저 여부 반환
 				return resolved(retention);
