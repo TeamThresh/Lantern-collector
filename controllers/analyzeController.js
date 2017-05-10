@@ -153,6 +153,8 @@ function dumpSavingLooper(context, list, header, callback) {
 	    					});
 //    					return dumpSavingLooper(context, list, header, callback);
 				        break;
+			        default :
+			        	return dumpSavingLooper(context, list, header, callback);
 				}
 			} else {
 				return callback();
