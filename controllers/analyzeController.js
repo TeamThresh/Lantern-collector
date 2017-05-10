@@ -26,6 +26,7 @@ exports.saveAnalysisDump = function(obj, callback) {
 		country_name : obj.device_info.location.country_name,
 		code : obj.device_info.location.code
 	};
+console.log(header.uuid);
 	// TODO 다중 쿼리로 변경할 필요가 있음
 	mysqlSetting.getPool()
         .then(mysqlSetting.getConnection)
@@ -37,7 +38,11 @@ exports.saveAnalysisDump = function(obj, callback) {
 						header.retention = retention;
         				return resolved(context);
         			})
-        			.catch(rejected);
+        			.catch(function(err) {
+        				context.connection.rollback();
+						mysqlSetting.releaseConnection(context);
+						return rejected(err);
+        			});
         	});
         })
         .then(function(context) {
@@ -153,8 +158,6 @@ function dumpSavingLooper(context, list, header, callback) {
 	    					});
 //    					return dumpSavingLooper(context, list, header, callback);
 				        break;
-			        default :
-			        	return dumpSavingLooper(context, list, header, callback);
 				}
 			} else {
 				return callback();
