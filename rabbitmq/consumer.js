@@ -9,6 +9,7 @@ exports.startConsumer = function() {
 			ch.assertQueue(q, {durable : false});
 			ch.consume(q, function(msg) {
 				console.log("get new dump data from rabbitmq");
+				ch.ack(msg);
 				api.resourceController.uploadFromQueue(msg.content.toString());
 			});
 		});
