@@ -69,7 +69,11 @@ console.log(header.uuid);
         			.then(function() {
         				return resolved(context);
         			})
-        			.catch(rejected);
+        			.catch(function(err) {
+        				context.connection.rollback();
+						mysqlSetting.releaseConnection(context);
+						return rejected(err);
+        			});
         	});
         })
 	    .then(mysqlSetting.commitTransaction)
