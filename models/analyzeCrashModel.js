@@ -16,12 +16,23 @@ exports.analyzeCrash = function(context, header, crashData) {
 				crashData.crash_name = crash_name;
 				crashData.crash_location = crash_location;
 
+				let key;
 				// Crash 정보 DB 저장
 				AnalyzerModel.getVersionKey(context, crashHead)
 					.then(function() {
 						return AnalyzerModel.getActivityKey(context, crashHead);
 					})
-					.then(function(key) {
+					.then(function(result) {
+						key = result;
+						return new Promise(function(inresolved, inrejected) {
+							// insert crash info
+							AnalyzerModel.insertCrashName(context, key, crashData)
+								.then(inresolved)
+								.catch(inrejected);
+						});
+					})
+					.then(function() {
+						//return Promise.resolved;
 						// get a key
 						return new Promise(function(inresolved, inrejected) {
 							// insert crash info
