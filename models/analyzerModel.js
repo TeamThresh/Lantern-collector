@@ -519,20 +519,36 @@ module.exports = {
 		return new Promise(function(resolved, rejected) {
 			var insert = [];
 	        var sql = `INSERT INTO eventpath_crash_table 
-	        	(ec_crash_id, ec_event_id, ec_depth_level)
+	        	(ec_crash_id, ec_event_id, ec_uplevel)
 				VALUES `;
 
 			let path_length = crash_info.event_path.length - 1;
 			crash_info.event_path.forEach((each, index) => {
 				
 				insert.push(crash_info.crash_id, 
-						each.class_name, each.method_name, each.line_num,
-						index);
+						each.class_name, each.method_name, each.line_num);
+				if (index != 0) {
+					insert.push(
+						crash_info.event_path[index-1].class_name,
+						crash_info.event_path[index-1].method_name,
+						crash_info.event_path[index-1].line_num);
+				} else {
+					insert.push(
+						crash_info.event_path[index].class_name,
+						crash_info.event_path[index].method_name,
+						crash_info.event_path[index].line_num);
+				}
+
 				sql += `(?, 
 					(SELECT event_id FROM eventpath_table 
 						WHERE class_name = ?
 						AND method_name = ?
-						AND line_num = ?), ?) `;
+						AND line_num = ?), 
+					(SELECT event_id FROM eventpath_table 
+						WHERE class_name = ?
+						AND method_name = ?
+						AND line_num = ?) )`;
+
 				if (index < path_length) {
 					sql += ",";
 				}
@@ -621,23 +637,30 @@ module.exports = {
 	insertCallstack : function(context, fullarray) {
 		return new Promise(function(resolved, rejected) {
 			var insert = [];
-	        var sql = "INSERT INTO callstack_table " +
-			"(call_act_id, thread_name, call_count, call_clevel, " +
-			"call_uplevel) VALUES ";
+	        var sql = `INSERT INTO callstack_table 
+			(call_act_id, thread_name, call_count, call_clevel, 
+			call_uplevel) VALUES `;
 
 			let length = fullarray.length - 1;
 			fullarray.forEach(function(arr, index) {
-				sql += "(?, " +
-				"(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?), " +
-				"(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?))";
-				insert.push(arr.each_array, arr.stack_name, arr.up_stack_name);
+				insert.push(arr.each_array, arr.stack_name);
+				if (arr.up_stack_name != null) {
+					insert.push(arr.up_stack_name);
+				} else {
+					insert.push(arr.stack_name)
+				}
+
+				sql += `(?, 
+				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?), 
+				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?))`;
+				
 				if (index < length) {
 					sql += ",";
 				}
 			});
 
 			sql += "ON DUPLICATE KEY UPDATE " +
-				"call_count = VALUES(call_count)";
+				"call_count = VALUES(call_count) + 1";
 
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
