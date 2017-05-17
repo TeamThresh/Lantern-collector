@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/**
+ * APM Setup
+ */
+var WhatapAgent = require('whatap').NodeAgent;
 
 /**
  * Module dependencies.
