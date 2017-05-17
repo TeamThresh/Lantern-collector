@@ -42,6 +42,89 @@ exports.analyzeCrash = function(context, header, crashData) {
 						});
 					})
 					.then(function() {
+						return AnalyzerModel.insertEventPath(context, crashData);
+					})
+					.then(function() {
+						return AnalyzerModel.insertPathLink(context, crashData);
+					})
+					.then(function() {
+						// Callstack saving
+						return new Promise(function(inresolved, inrejected) {
+							if (crashData.save_trace == undefined)
+								crashData.save_trace = {};
+							crashData.thread_trace.forEach(function(thread) {
+								if (crashData.save_trace[thread.thread_name] == undefined)
+									crashData.save_trace[thread.thread_name] = {};
+
+								thread.trace_list.forEach(function(trace, index) {
+									let words = trace.split('(')[0].split('.')
+									let funcname = words[words.length-1];
+
+									if (crashData.save_trace[thread.thread_name][funcname] == undefined) {
+										crashData.save_trace[thread.thread_name][funcname] = [{
+											raw : trace,
+											count : 1,
+											uplevel : thread.trace_list[index-1] == undefined
+											 ? null : thread.trace_list[index-1]
+										}];
+									} else {
+										let result = crashData.save_trace[thread.thread_name][funcname]
+											.some(function (item, idx) {
+											if (item.raw == trace
+											&& item.uplevel == thread.trace_list[index-1]) {
+												item.count += 1;
+												return true;
+											} else {
+												return false;
+											}
+										});
+
+										if (!result) {
+											crashData.save_trace[thread.thread_name][funcname].push({
+												raw : trace,
+												count : 1,
+												uplevel : thread.trace_list[index-1] == undefined
+												 ? null : thread.trace_list[index-1]
+											});
+										}	
+									}
+								});
+							});
+
+							return inresolved();
+						});
+					})
+					.then(function() {
+						let insert_array = [];
+						let stackname_array = [];
+
+						let thread_name_list = Object.keys(crashData.save_trace);
+						thread_name_list.forEach(function(thread_name) {
+							let func_name_list = Object.keys(crashData.save_trace[thread_name]);
+							func_name_list.forEach(function(func_name) {
+								crashData.save_trace[thread_name][func_name].forEach(function(each_stack) {
+									insert_array.push({
+										each_array : [crashData.crash_id, thread_name,
+											each_stack.count],
+										stack_name : each_stack.raw,
+										up_stack_name : each_stack.uplevel
+									});
+
+									stackname_array.push([func_name, each_stack.raw]);
+								});
+							});
+						});
+
+						return AnalyzerModel.insertCallstackName(context, stackname_array)
+							.then(function() {
+								return new Promise(function(inresolved, inrejected) {
+									AnalyzerModel.insertCrashStack(context, insert_array)
+										.then(inresolved)
+										.catch(inrejected);
+								});
+							});
+					})
+					.then(function() {
 						if (isFail) {
 			            	// if need rollback remove comment
 	        				return rejected(isFail)
