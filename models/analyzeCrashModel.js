@@ -213,7 +213,7 @@ function extractCrashInfo(stacktrace, callback) {
 			let crash_name = splitedLine[1].trim();
 			// crash 위치 찾기
 			let crash_location = stacktraceList[index+1].split("(")[1];
-			crash_location = crash_location.split(".java")[0];
+			crash_location = crash_location.split(")")[0];
 
 			return callback(null, crash_name, crash_location);
 		} else if (index == stacktraceList.length-1) {
@@ -222,7 +222,7 @@ function extractCrashInfo(stacktrace, callback) {
 			let crash_name = exceptionName.trim();
 			// crash 위치 찾기
 			let crash_location = stacktraceList[1].split("(")[1];
-			crash_location = crash_location.split(".java")[0];
+			crash_location = crash_location.split(")")[0];
 
 			return callback(null, crash_name, crash_location);
 		}
