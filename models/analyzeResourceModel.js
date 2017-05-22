@@ -136,7 +136,7 @@ module.exports = {
 			var insert = [];
 	        var sql = `INSERT INTO callstack_table 
 			(call_act_id, thread_name, call_count, call_clevel, 
-			call_uplevel) VALUES `;
+			call_uplevel, call_downlevel) VALUES `;
 
 			let length = fullarray.length - 1;
 			fullarray.forEach(function(arr, index) {
@@ -147,9 +147,15 @@ module.exports = {
 					insert.push(arr.stack_name)
 				}
 
-console.log(insert);
+				if (arr.down_stack_name != null) {
+					insert.push(arr.down_stack_name);
+				} else {
+					insert.push(arr.stack_name)
+				}
+
 				sql += `(?, 
 				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?), 
+				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?),
 				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?))`;
 				
 				if (index < length) {
@@ -157,7 +163,7 @@ console.log(insert);
 				}
 			});
 
-			sql += "ON DUPLICATE KEY UPDATE " +
+			sql += " ON DUPLICATE KEY UPDATE " +
 				"call_count = VALUES(call_count) + 1";
 
 	        context.connection.query(sql, insert, function (err, rows) {
@@ -167,7 +173,6 @@ console.log(insert);
 	                console.error(err);
 	                return rejected(error);
 	            }
-
 	            return resolved();
 	        });
 	    });

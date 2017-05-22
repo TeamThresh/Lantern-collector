@@ -25,7 +25,6 @@ exports.checkPackageKey = function(package_name, key, callback) {
 	                    return rejected({ context : context, error : error });
 	                }
 
-	                console.log(rows);
 	                
 	                return resolved(context);
 	            });

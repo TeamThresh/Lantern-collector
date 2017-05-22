@@ -108,7 +108,7 @@ function saveDump(dump) {
 
         // TODO access_token 으로 User 인증
         // TODO validation 파싱을 controller로 뺄 것
-        checkModel.checkPackageKey(data.dump.package_name, data.dump.project_key, function(err) {
+        checkModel.checkPackageKey(dump.package_name, dump.project_key, function(err) {
             if (err) {
                 console.error(err);
                 return err instanceof Number ? next(err) : next(500);
