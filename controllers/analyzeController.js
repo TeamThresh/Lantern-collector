@@ -3,11 +3,11 @@
  */
 var mysqlSetting = require("../models/mysqlSetting");
 
-var AnalyzerResourceModel = require("../models/analyzeResourceModel");
-var AnalyzerRequestModel = require("../models/analyzeRequestModel");
-var AnalyzerRenderModel = require("../models/analyzeRenderModel");
-var AnalyzerCrashModel = require("../models/analyzeCrashModel");
-var AnalyzerUserModel = require("../models/analyzeUserModel");
+var AnalyzerResourceController = require("./analyze/analyzeResourceController");
+var AnalyzerRequestController = require("./analyze/analyzeRequestController");
+var AnalyzerRenderController = require("./analyze/analyzeRenderController");
+var AnalyzerCrashController = require("./analyze/analyzeCrashController");
+var AnalyzerUserController = require("./analyze/analyzeUserController");
 
 /**
  * To dump client resource data into Analysis Database
@@ -33,7 +33,7 @@ console.log(header.uuid);
         .then(mysqlSetting.connBeginTransaction)
         .then(function(context) {
         	return new Promise(function(resolved, rejected) {
-        		AnalyzerUserModel.addUserConnect(context, header)
+        		AnalyzerUserController.addUserConnect(context, header)
         			.then(function(retention) {
 						header.retention = retention;
         				return resolved(context);
@@ -64,7 +64,7 @@ console.log(header.uuid);
         .then(function(context) {
         	// After Process
         	return new Promise(function(resolved, rejected) {
-        		AnalyzerResourceModel
+        		AnalyzerResourceController
         			.saveCallstack(context, header)
         			.then(function() {
         				return resolved(context);
@@ -103,7 +103,7 @@ function dumpSavingLooper(context, list, header, callback) {
 				// switch each array object's type
 		    	switch(arr.type) {
 		    		case "res": // Analyze resource
-		    			AnalyzerResourceModel
+		    			AnalyzerResourceController
 		    				.analyzeResource(context, header, arr)
 		    				.then(function() {
 		    					return dumpSavingLooper(context, list, header, callback);
@@ -118,7 +118,7 @@ function dumpSavingLooper(context, list, header, callback) {
 //	    				return dumpSavingLooper(context, list, header, callback);
 		        		break;
 					case "render": // Analyze rendering data
-				    	AnalyzerRenderModel
+				    	AnalyzerRenderController
 				    		.analyzeRender(context, header, arr)
 				    		.then(function() {
 				    			return dumpSavingLooper(context, list, header, callback);
@@ -133,7 +133,7 @@ function dumpSavingLooper(context, list, header, callback) {
 //			    		return dumpSavingLooper(context, list, header, callback);
 				    	break;
 					case "crash": // Analyze crash info
-						AnalyzerCrashModel
+						AnalyzerCrashController
 							.analyzeCrash(context, header, arr)
 							.then(function() {
 								return dumpSavingLooper(context, list, header, callback);
@@ -148,7 +148,7 @@ function dumpSavingLooper(context, list, header, callback) {
 //						return dumpSavingLooper(context, list, header, callback);
 				        break;
 					case "request": // Analyze network outbound call
-	    				AnalyzerRequestModel
+	    				AnalyzerRequestController
 	    					.analyzeRequest(context, header, arr)
 	    					.then(function() {
 	    						return dumpSavingLooper(context, list, header, callback);

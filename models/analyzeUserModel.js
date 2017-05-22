@@ -1,27 +1,35 @@
-var format = require('date-format');
-var AnalyzerModel = require('./analyzerModel');
+module.exports = {
+	
+	/**
+	 * Add user connection time
+	 * @param context - To get mysql connection on this object
+	 * @param data - User information
+	 * @return Promise
+	 */
+	insertUserConnection : function(context, data) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [data.uuid, data.connection_time, data.ver_key,
+			data.connection_time];
+	        var sql = "INSERT INTO user_table SET " +
+			"`uuid` = ?, " +
+			"`last_connection` = ?, " +
+			"`user_ver_id` = ? " +
+			"ON DUPLICATE KEY UPDATE " +
+			"`last_connection` = ?, " +
+			"`user_ver_id` = VALUES(user_ver_id)";
 
-exports.addUserConnect = function(context, header) {
-	return new Promise(function(resolved, rejected) {
-		let userHeader = JSON.parse(JSON.stringify(header));
-		userHeader.connection_time = format('yyyy-MM-dd hh:mm:00', new Date());
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
 
-		AnalyzerModel
-			.getVersionKey(context, userHeader)
-			.then(function() {
-				return new Promise(function(inresolved, inrejected) {
-					AnalyzerModel.insertUserConnection(context, userHeader)
-						.then(inresolved)
-						.catch(inrejected);
-				});
-			})
-			.then(function(retention) {
-				// 복귀 유저 여부 반환
-				return resolved(retention);
-			})
-			.catch(function(err) {
-				// Occurred an error by server
-	            return rejected(err);
-			});
-	});
+	            if (rows.insertId == 0)
+	            	return resolved(true);
+	            return resolved(false);
+	        });
+	    });
+	}
 }

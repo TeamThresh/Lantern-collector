@@ -1,78 +1,62 @@
-var format = require('date-format');
-var AnalyzerModel = require('./analyzerModel');
+module.exports = {
 
-exports.analyzeRender = function(context, header, rendData) {
-	return new Promise(function(resolved, rejected) {
-		// onResume 일 경우 저장 작업 시작
-		if (rendData.lifecycle_name === "onResume") {
-			// 최상위 액티비티 변경
-			header.activity_name = rendData.activity_name;
-			let rendHead = JSON.parse(JSON.stringify(header));
-			rendHead.start_time = format('yyyy-MM-dd hh:mm:00', 
-				new Date(rendData.start_time));
-			
-			// 그전에 가지고 있던 onCreate 나 onStart 시간을 가져옴
-			if (rendHead.lifecycle_start === undefined) {
-				rendHead.lifecycle_start = rendData.start_time;
-				rendHead.lifecycle_end = rendData.end_time;
-			} else {
-				rendHead.lifecycle_end = rendData.end_time;
-			}
+	/**
+	 * Add rendering information of lifecycle and increase the count
+	 * @param context - To get mysql connection on this object
+	 * @param key - Resource Key
+	 * @param render_info - Rendering information
+	 * @return Promise
+	 */
+	insertRender : function(context, key, render_info) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [key, render_info.ui_speed, render_info.start_time];
+	        var sql = "INSERT INTO ui_table SET " +
+	            "`ui_act_id` = ?, " +
+	            "`ui_speed` = ?, " +
+	            "`ui_count` = 1, " +
+	            "`ui_time` = ? " +
+	            "ON DUPLICATE KEY UPDATE " +
+	            "`ui_count` = `ui_count` + 1";
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
 
-			// 저장되있는 start 값 초기화
-			header.lifecycle_name = undefined;
-			header.lifecycle_start = undefined;
+	            return resolved();
+	        });
+	    });
+	},
 
-			// set activity key which use all tables
-			let key;
-			AnalyzerModel.getVersionKey(context, rendHead)
-				.then(function() {
-					return AnalyzerModel.getActivityKey(context, rendHead);
-				})
-				.then(function(result) {
-					// get a key
-					key = result;
-					return new Promise(function(inresolved, inrejected) {
-						// increase user count
-						AnalyzerModel.insertCount(context, key, header.retention)
-							.then(inresolved)
-							.catch(inrejected);
-					});
-				})
-				.then(function() {
-					if (rendHead.before_activity === undefined) {
-						return Promise.resolved;
-					}
-					// Add activity link
-					return AnalyzerModel.insertLink(context, key, rendHead);
-				})
-				.then(function() {
-					return new Promise(function(inresolved, inrejected) {
-						// Add UI Rendering Speed
-						rendHead.ui_speed = rendHead.lifecycle_end - rendHead.lifecycle_start;
-						
-						AnalyzerModel.insertRender(context, key, rendHead)
-							.then(inresolved)
-							.catch(inrejected)
-					});
-				})
-				.then(function() {
-					// link 계산을 위해 before key를 저장
-					header.before_activity = key;
-					return resolved();
-				})
-				.catch(function(err) {
-					// Occurred an error by server
-		            return rejected(err);
-				});
-		} else if (header.lifecycle_name === undefined) {
-			// onCreate 나 onStart 일경우 lifecycle start 등록
-			header.lifecycle_name = rendData.lifecycle_name;
-			header.lifecycle_start = rendData.start_time;
+	/**
+	 * Add link between activities
+	 * @param context - To get mysql connection on this object
+	 * @param key - Resource Key
+	 * @param render_info - Rendering information
+	 * @return Promise
+	 */
+	insertLink : function(context, key, render_info) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [key, render_info.before_activity];
+	        var sql = "INSERT INTO link_table SET " +
+	            "`link_act_id` = ?, " +
+	            "`before_act_id` = ?, " +
+	            "`link_count` = 1 " +
+	            "ON DUPLICATE KEY UPDATE " +
+	            "`link_count` = `link_count` + 1";
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
 
-	    	return resolved();
-		} else {
-			return resolved();
-		}
-	});
+	            return resolved();
+	        });
+	    });
+	},
+
 }

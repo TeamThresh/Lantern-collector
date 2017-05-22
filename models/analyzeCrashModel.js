@@ -1,231 +1,230 @@
-var format = require('date-format');
-var AnalyzerModel = require('./analyzerModel');
+module.exports = {
+	
+	/**
+	 * Add crash information and increase the count
+	 * @param context - To get mysql connection on this object
+	 * @param key - Resource Key
+	 * @param crash_info - Crash information
+	 * @return Promise
+	 */
+	insertCrashName : function(context, key, crash_info) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [crash_info.crash_name, crash_info.crash_location,
+						crash_info.stacktrace, crash_info.crash_time, 
+						crash_info.crash_time, crash_info.crash_time];
+	        var sql = "INSERT INTO crash_raw_table SET " +
+	            "`crash_name` = ?, " +
+	            "`crash_location` = ?, " +
+	            "`crash_stacktrace` = ?, " +
+	            "`first_time` = ?, " +
+	            "`last_time` = ? " +
+	            "ON DUPLICATE KEY UPDATE " +
+	            "`last_time` = ? ";
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            } else if (rows.insertId == 0) {
+	            	let select = [crash_info.crash_name, crash_info.crash_location]
+	            	let sql = "SELECT crash_id FROM crash_raw_table " +
+	            		"WHERE `crash_name` = ? " +
+	            		"AND `crash_location` = ? ";
+	            	context.connection.query(sql, select, function(err, rows) {
+	            		if (err) {
+			                var error = new Error("insert failed");
+			                error.status = 500;
+			                console.error(err);
+			                return rejected(error);
+			            }
+	            		crash_info.crash_id = rows[0].crash_id;
+		            	return resolved();
+	            	});
+	            } else {
+	            	crash_info.crash_id = rows.insertId;
+		            return resolved();
+		        }	            
+	        });
+	    });
+	},
 
-exports.analyzeCrash = function(context, header, crashData) {
-	let isFail = false;
-	return new Promise(function(resolved, rejected) {
-		// Crash 정보 가져옴
-		let crashHead = JSON.parse(JSON.stringify(header));
-		crashHead.start_time = format('yyyy-MM-dd hh:mm:00', 
-				new Date(crashData.crash_time));
-		
-		// stacktrace 의 첫줄에 있는 Exception 이름도 가져와야 함
-		extractCrashInfo(crashData.stacktrace, 
-			function(err, crash_name, crash_location) {
-				if (err) return rejected("Crash info parsing error");
-				crashData.crash_name = crash_name;
-				crashData.crash_location = crash_location;
+	/**
+	 * Add crash information and increase the count
+	 * @param context - To get mysql connection on this object
+	 * @param key - Resource Key
+	 * @param crash_info - Crash information
+	 * @return Promise
+	 */
+	insertCrash : function(context, key, crash_info) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [key, crash_info.crash_id, 
+				crash_info.system_service.wifi,
+				crash_info.system_service.mobile_network,
+				crash_info.system_service.gps,
+				crash_info.system_service.wifi,
+				crash_info.system_service.mobile_network,
+				crash_info.system_service.gps];
+	        var sql = `INSERT INTO crash_table SET 
+	            crash_act_id = ?, 
+	            crash_raw_id = ?, 
+	            crash_count = 1, 
+	            crash_wifi = ?, 
+	            crash_mobile_net = ?,
+	            crash_gps = ?
+	            ON DUPLICATE KEY UPDATE 
+	            crash_count = crash_count + 1,
+	            crash_wifi = crash_wifi + ?, 
+	            crash_mobile_net = crash_mobile_net + ?,
+	            crash_gps = crash_gps + ? `;
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
 
-				let key;
-				// Crash 정보 DB 저장
-				AnalyzerModel.getVersionKey(context, crashHead)
-					.then(function() {
-						return AnalyzerModel.getActivityKey(context, crashHead);
-					})
-					.then(function(result) {
-						key = result;
-						return new Promise(function(inresolved, inrejected) {
-							// insert crash info
-							AnalyzerModel.insertCrashName(context, key, crashData)
-								.then(inresolved)
-								.catch(inrejected);
-						});
-					})
-					.then(function() {
-						//return Promise.resolved;
-						// get a key
-						return new Promise(function(inresolved, inrejected) {
-							// insert crash info
-							AnalyzerModel.insertCrash(context, key, crashData)
-								.then(inresolved)
-								.catch(inrejected);
-						});
-					})
-					.then(function() {
-						return AnalyzerModel.insertEventPath(context, crashData);
-					})
-					.then(function() {
-						return AnalyzerModel.insertPathLink(context, crashData);
-					})
-					.then(function() {
-						// Callstack saving
-						return new Promise(function(inresolved, inrejected) {
-							if (crashData.save_trace == undefined)
-								crashData.save_trace = {};
-							crashData.thread_trace.forEach(function(thread) {
-								if (crashData.save_trace[thread.thread_name] == undefined)
-									crashData.save_trace[thread.thread_name] = {};
+	            return resolved();
+	        });
+	    });
+	},
 
-								thread.trace_list.forEach(function(trace, index) {
-									let words = trace.split('(')[0].split('.')
-									let funcname = words[words.length-1];
+	/**
+	 * Add crash callstack
+	 * @param context - To get mysql connection on this object
+	 * @param fullarray - All stacktrace count
+	 * @return Promise
+	 */
+	insertCrashStack : function(context, fullarray) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [];
+	        var sql = "INSERT INTO crash_stack_table " +
+			"(cs_crash_id, cs_thread_name, cs_count, cs_clevel, " +
+			"cs_uplevel) VALUES ";
 
-									if (crashData.save_trace[thread.thread_name][funcname] == undefined) {
-										crashData.save_trace[thread.thread_name][funcname] = [{
-											raw : trace,
-											count : 1,
-											uplevel : thread.trace_list[index-1] == undefined
-											 ? null : thread.trace_list[index-1]
-										}];
-									} else {
-										let result = crashData.save_trace[thread.thread_name][funcname]
-											.some(function (item, idx) {
-											if (item.raw == trace
-											&& item.uplevel == thread.trace_list[index-1]) {
-												item.count += 1;
-												return true;
-											} else {
-												return false;
-											}
-										});
-
-										if (!result) {
-											crashData.save_trace[thread.thread_name][funcname].push({
-												raw : trace,
-												count : 1,
-												uplevel : thread.trace_list[index-1] == undefined
-												 ? null : thread.trace_list[index-1]
-											});
-										}	
-									}
-								});
-							});
-
-							return inresolved();
-						});
-					})
-					.then(function() {
-						let insert_array = [];
-						let stackname_array = [];
-
-						let thread_name_list = Object.keys(crashData.save_trace);
-						thread_name_list.forEach(function(thread_name) {
-							let func_name_list = Object.keys(crashData.save_trace[thread_name]);
-							func_name_list.forEach(function(func_name) {
-								crashData.save_trace[thread_name][func_name].forEach(function(each_stack) {
-									insert_array.push({
-										each_array : [crashData.crash_id, thread_name,
-											each_stack.count],
-										stack_name : each_stack.raw,
-										up_stack_name : each_stack.uplevel
-									});
-
-									stackname_array.push([func_name, each_stack.raw]);
-								});
-							});
-						});
-
-						return AnalyzerModel.insertCallstackName(context, stackname_array)
-							.then(function() {
-								return new Promise(function(inresolved, inrejected) {
-									AnalyzerModel.insertCrashStack(context, insert_array)
-										.then(inresolved)
-										.catch(inrejected);
-								});
-							});
-					})
-					.then(function() {
-						if (isFail) {
-			            	// if need rollback remove comment
-	        				return rejected(isFail)
-				        }
-	    				return resolved();
-					})
-					.catch(function(err) {
-						// Occurred an error by server
-		            	return rejected(err);
-					});
+			let length = fullarray.length - 1;
+			fullarray.forEach(function(arr, index) {
+				sql += "(?, " +
+				"(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?), " +
+				"(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?))";
+				insert.push(arr.each_array, arr.stack_name, arr.up_stack_name);
+				if (index < length) {
+					sql += ",";
+				}
 			});
 
-		/*
-		// Stacktrace 에서 Caused by가 있는 것 찾기
-		let stacktraceList = crashData.stacktrace.split("\n");
-		// Stacktrace 를 돌면서 Crash 이름, 위치 찾음
-		stacktraceList.forEach(function(line, in_index) {
-			// Cuased by 추출 (crash 이름, 위치)
-			let compareWord = line.slice(0, 9);
+			sql += "ON DUPLICATE KEY UPDATE " +
+				"cs_count = VALUES(cs_count)";
 
-			if (compareWord === "Caused by") {
-				let splitedLine = line.split(":");
-				crash_info.crash_name = splitedLine[1].trim();
-				crash_info.crash_location = stacktraceList[in_index+1]
-					.trim()	// 좌우 공백 제거
-					.split(" ")[1];	// at 제거
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
 
-				// Crash 정보 DB 저장
-	    		AnalyzerModel.getVersionKey(context, crashHead)
-	    			.then(function() {
-						return AnalyzerModel.getActivityKey(context, crashHead);
-					})
-	    			.then(function(key) {
-	    				// get a key
-	    				return new Promise(function(inresolved, inrejected) {
-	    					// insert crash info
-	    					AnalyzerModel.insertCrash(context, key, crash_info)
-	    						.then(inresolved)
-	    						.catch(inrejected);
-	    				});
-	    			})
-	    			.then(function() {
-	    				if (in_index == stacktraceList.length-1) {
-	    					if (isFail) {
-				            	// if need rollback remove comment
-		        				return rejected(isFail)
-					        }
-	        				return resolved();
-				        }
-					})
-					.catch(function(err) {
-						// Occurred an error by server
-						isFail = err;
-			            if (in_index == stacktraceList.length-1) {
-			            	return rejected(err);
-			        	}
-					});
-			} else {
-				if (in_index == stacktraceList.length-1) {
-					// Crash는 발생했으나 parsing 실패한경우
-					if (isFail) {
-		            	// if need rollback remove comment
-	    				return rejected(isFail)
-			        }
-					return resolved();
-		        }
-			}
-			
-		});
-		*/
-	});
-};
+	            return resolved();
+	        });
+	    });
+	},
 
-function extractCrashInfo(stacktrace, callback) {
-	// Stacktrace 에서 crash 이름 찾기
-	let stacktraceList = stacktrace.split("\n");
-	
-	// Stacktrace 를 돌면서 Crash 이름, 위치 찾음
-	for (var index = 0; index <= stacktraceList.length-1; index++) {
-		// Cuased by 추출 (crash 이름, 위치)
-		let compareWord = stacktraceList[index].slice(0, 9);
+	/**
+	 * Add Event Path
+	 * @param context - To get mysql connection on this object
+	 * @param crash_info - Crash information
+	 * @return Promise
+	 */
+	insertEventPath : function(context, crash_info) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [];
+	        var sql = `INSERT IGNORE INTO eventpath_table 
+	        	(class_name, method_name, line_num, event_label)
+				VALUES `;
 
-		if (compareWord === "Caused by") {
-			// Caused by가 있는 경우
-			let splitedLine = stacktraceList[index].split(":");
-			let crash_name = splitedLine[1].trim();
-			// crash 위치 찾기
-			let crash_location = stacktraceList[index+1].split("(")[1];
-			crash_location = crash_location.split(")")[0];
+			let path_length = crash_info.event_path.length - 1;
+			crash_info.event_path.forEach((each, index) => {
+				insert.push(each.class_name, each.method_name,
+					each.line_num, each.event_label || null);
+				sql += "(?, ?, ?, ?) ";
+				if (index < path_length) {
+					sql += ",";
+				}
+			});
 
-			return callback(null, crash_name, crash_location);
-		} else if (index == stacktraceList.length-1) {
-			// Crash는 발생했으나 Caused by가 없는 경우
-			let exceptionName = stacktraceList[0].split(":")[0];
-			let crash_name = exceptionName.trim();
-			// crash 위치 찾기
-			let crash_location = stacktraceList[1].split("(")[1];
-			crash_location = crash_location.split(")")[0];
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
+	            
+	            if (rows.insertId == 0)
+	            	return resolved(true);
+	            return resolved(false);
+	        });
+	    });
+	},
 
-			return callback(null, crash_name, crash_location);
-		}
-	}
-	return callback(0);
+	/**
+	 * Add Event path link
+	 * @param context - To get mysql connection on this object
+	 * @param crash_info - Crash information
+	 * @return Promise
+	 */
+	insertPathLink : function(context, crash_info) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [];
+	        var sql = `INSERT INTO eventpath_crash_table 
+	        	(ec_crash_id, ec_event_id, ec_uplevel)
+				VALUES `;
+
+			let path_length = crash_info.event_path.length - 1;
+			crash_info.event_path.forEach((each, index) => {
+				
+				insert.push(crash_info.crash_id, 
+						each.class_name, each.method_name, each.line_num);
+				if (index != 0) {
+					insert.push(
+						crash_info.event_path[index-1].class_name,
+						crash_info.event_path[index-1].method_name,
+						crash_info.event_path[index-1].line_num);
+				} else {
+					insert.push(
+						crash_info.event_path[index].class_name,
+						crash_info.event_path[index].method_name,
+						crash_info.event_path[index].line_num);
+				}
+
+				sql += `(?, 
+					(SELECT event_id FROM eventpath_table 
+						WHERE class_name = ?
+						AND method_name = ?
+						AND line_num = ?), 
+					(SELECT event_id FROM eventpath_table 
+						WHERE class_name = ?
+						AND method_name = ?
+						AND line_num = ?) )`;
+
+				if (index < path_length) {
+					sql += ",";
+				}
+			});
+
+			sql += `ON DUPLICATE KEY UPDATE 
+				ec_count = ec_count + 1`;
+
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
+	            return resolved();
+	        });
+	    });
+	},
 }

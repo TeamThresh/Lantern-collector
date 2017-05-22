@@ -1,38 +1,40 @@
-var format = require('date-format');
-var AnalyzerModel = require('./analyzerModel');
+module.exports = {
+	
+	/**
+	 * Add out bound call information and increase the count
+	 * @param context - To get mysql connection on this object
+	 * @param key - Resource Key
+	 * @param host - Call information
+	 * @return Promise
+	 */
+	insertOutboundCall : function(context, key, host) {
+		return new Promise(function(resolved, rejected) {
+			var insert = [key, host.name, host.status, 
+				host.speed, host.speed, host.speed, 
+				host.speed, host.speed, host.speed];
+	        var sql = "INSERT INTO obc_table SET " +
+	            "`host_act_id` = ?, " +
+	            "`host_name` = ?, " +
+	            "`host_status` = ?, " +
+	            "`host_speed` = ?, " +
+	            "`host_high_speed` = ?, " +
+	            "`host_low_speed` = ?, " +
+	            "`host_count` = 1 " +
+	            "ON DUPLICATE KEY UPDATE " +
+	            "`host_high_speed` = GREATEST(`host_high_speed`, ?), " +
+	            "`host_low_speed` = LEAST(`host_low_speed`, ?), "+
+	            "`host_speed` = `host_speed` + ?, " +
+	            "`host_count` = `host_count` + 1";
+	        context.connection.query(sql, insert, function (err, rows) {
+	            if (err) {
+	                var error = new Error("insert failed");
+	                error.status = 500;
+	                console.error(err);
+	                return rejected(error);
+	            }
 
-exports.analyzeRequest = function(context, header, requestData) {
-	return new Promise(function(resolved, rejected) {
-		//set activity name
-		let reqHead = JSON.parse(JSON.stringify(header));
-		reqHead.start_time = format('yyyy-MM-dd hh:mm:00', 
-			new Date(requestData.request_time));
-		
-		// Get Activity Key
-		AnalyzerModel.getVersionKey(context, reqHead)
-			.then(function() {
-				return AnalyzerModel.getActivityKey(context, reqHead);
-			})
-			.then(function(act_host_key) {
-				return new Promise(function(inresolved, inrejected) {
-					// Add host information
-					let host = {
-    					name : requestData.host,
-    					speed : (requestData.response_time - requestData.request_time),
-    					status : requestData.status
-    				};
-
-					return AnalyzerModel.insertOutboundCall(context, act_host_key, host)
-						.then(inresolved)
-						.catch(inrejected)
-				});
-			})
-			.then(function() {
-				return resolved();
-			})
-			.catch(function(err) {
-				// Occurred an error by server
-				return rejected(err);
-			});
-	});
-};
+	            return resolved();
+	        });
+	    });
+	},
+}
