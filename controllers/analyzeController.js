@@ -16,7 +16,7 @@ var AnalyzerUserModel = require("../models/analyzeUserModel");
  */
 let length = 0;
 exports.saveAnalysisDump = function(obj, callback) {
-	// Set head infomation of resource
+	// Set head information of resource
 	var header = {
 		app_name : obj.package_name,
 		os_ver : obj.device_info.os,

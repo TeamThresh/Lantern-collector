@@ -82,23 +82,31 @@ exports.analyzeResource = function(context, header, resData) {
 						for (var i=0;i<trace_array.length;i++) {
 							let words = trace_array[i].trace_content.split('(')[0].split('.')
 							let funcname = words[words.length-1];
-							if (i!=0) {
-								uplevel_trace_content = trace_array[i-1].trace_content;
+							if (i==0) {
+								uplevel_trace_content = null
 							} else {
-								uplevel_trace_content = null;
+								uplevel_trace_content = trace_array[i-1].trace_content;
+							}
+
+							if (i==trace_array.length-1) {
+								downlevel_trace_content = null;
+							} else {
+								downlevel_trace_content = trace_array[i+1].trace_content;
 							}
 
 							if (header.thread_trace[key][thread.thread_name][funcname] == undefined) {
 								header.thread_trace[key][thread.thread_name][funcname] = [{
 									raw : trace_array[i].trace_content,
 									count : 1,
-									uplevel : uplevel_trace_content
+									uplevel : uplevel_trace_content,
+									downlevel : downlevel_trace_content
 								}];
 							} else {
 								let result = header.thread_trace[key][thread.thread_name][funcname]
 									.some(function (item, idx) {
 									if (item.raw == trace_array[i].trace_content
-									&& item.uplevel == uplevel_trace_content) {
+									&& item.uplevel == uplevel_trace_content 
+									&& item.downlevel == downlevel_trace_content) {
 										item.count += 1;
 										return true;
 									} else {
@@ -110,7 +118,8 @@ exports.analyzeResource = function(context, header, resData) {
 									header.thread_trace[key][thread.thread_name][funcname].push({
 										raw : trace_array[i].trace_content,
 										count : 1,
-										uplevel : uplevel_trace_content
+										uplevel : uplevel_trace_content,
+										downlevel : downlevel_trace_content
 									});
 								}	
 							}
@@ -168,6 +177,7 @@ exports.analyzeResource = function(context, header, resData) {
 
 exports.saveCallstack = function(context, header) {
 	return new Promise(function(resolved, rejected) {
+		console.log("thread_trace : ", thread_trace);
 		let act_id_list = Object.keys(header.thread_trace);
 		let insert_array = [];
 		let stackname_array = [];
@@ -182,7 +192,8 @@ exports.saveCallstack = function(context, header) {
 							each_array : [act_id, thread_name,
 								each_stack.count],
 							stack_name : each_stack.raw,
-							up_stack_name : each_stack.uplevel
+							up_stack_name : each_stack.uplevel,
+							down_stack_name : each_stack.downlevel
 						});
 
 						stackname_array.push([func_name, each_stack.raw]);

@@ -639,13 +639,19 @@ module.exports = {
 			var insert = [];
 	        var sql = `INSERT INTO callstack_table 
 			(call_act_id, thread_name, call_count, call_clevel, 
-			call_uplevel) VALUES `;
+			call_uplevel, call_downlevel) VALUES `;
 
 			let length = fullarray.length - 1;
 			fullarray.forEach(function(arr, index) {
 				insert.push(arr.each_array, arr.stack_name);
 				if (arr.up_stack_name != null) {
 					insert.push(arr.up_stack_name);
+				} else {
+					insert.push(arr.stack_name)
+				}
+
+				if (arr.down_stack_name != null) {
+					insert.push(arr.down_stack_name);
 				} else {
 					insert.push(arr.stack_name)
 				}
