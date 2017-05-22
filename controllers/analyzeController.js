@@ -58,12 +58,16 @@ console.log(header.uuid);
         	});
         })
         .then(function(context) {
-        	// After Process
+			// 실행은 됬지만 트레이스가 없는경우 
+			if (header.thread_trace) {
+				return resolved(context);
+			}
+			
+        	// After Process, 콜스택 저장
         	return new Promise(function(resolved, rejected) {
         		AnalyzerResourceController
         			.saveCallstack(context, header)
         			.then(function() {
-        				console.log("저장 완료");
         				return resolved(context);
         			})
         			.catch(function(err) {
