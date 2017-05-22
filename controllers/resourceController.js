@@ -3,6 +3,7 @@
  */
 
 var resourceModel = require('../models/resourceModel');
+var checkModel = require('../models/checkModel');
 var analyzeController = require('./analyzeController');
 var maxmind = require('maxmind');
 
@@ -106,23 +107,30 @@ function saveDump(dump) {
 
         // TODO access_token 으로 User 인증
         // TODO validation 파싱을 controller로 뺄 것
-        resourceModel.saveResourceDump(dump, function(err, resource) {
+        checkModel.checkPackageKey(data.projectKey, function(err) {
             if (err) {
+                console.error(err);
                 return err instanceof Number ? next(err) : next(500);
             }
-            if (resource.data.length > 0) {
-                analyzeController.saveAnalysisDump(
-                    resource, 
-                    function(err) {
-                        if (err) {
-                            console.error(err);
-                            return err instanceof Number ? next(err) : next(500);
-                        }
-			console.info("{msg: complete}");
-                    });
-            } else {
-		console.info("{msg: complete}");
-            }
+            resourceModel.saveResourceDump(dump, function(err, resource) {
+                if (err) {
+                    console.error(err);
+                    return err instanceof Number ? next(err) : next(500);
+                }
+                if (resource.data.length > 0) {
+                    analyzeController.saveAnalysisDump(
+                        resource, 
+                        function(err) {
+                            if (err) {
+                                console.error(err);
+                                return err instanceof Number ? next(err) : next(500);
+                            }
+                console.info("{msg: complete}");
+                        });
+                } else {
+            console.info("{msg: complete}");
+                }
+            });
         });
     });
 };

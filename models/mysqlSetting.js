@@ -68,6 +68,13 @@ var commitTransaction = function(context) {
     });
 };
 
+var rollbackTransaction = function(context) {
+    return new Promise(function(resolved, rejected) {
+        context.connection.rollback();
+        return resolved(context);
+    });
+}
+
 var releaseConnection = function(context) {
     return new Promise(function(resolved, rejected) {
         context.connection.release();
@@ -80,3 +87,4 @@ module.exports.getConnection = getConnection;
 module.exports.connBeginTransaction = connBeginTransaction;
 module.exports.commitTransaction = commitTransaction;
 module.exports.releaseConnection = releaseConnection;
+module.exports.rollbackTransaction = rollbackTransaction;
