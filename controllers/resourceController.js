@@ -92,7 +92,8 @@ function saveDump(dump) {
         }
         // Lookup table에 국가 코드 조회
         
-	dump = JSON.parse(dump);
+	    dump = JSON.parse(dump);
+
         var city = cityLookup.get(dump.device_info.ip);
 
         // 국가코드, 국가 이름, 도시 이름
