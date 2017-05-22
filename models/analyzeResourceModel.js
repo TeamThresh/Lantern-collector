@@ -177,7 +177,6 @@ exports.analyzeResource = function(context, header, resData) {
 
 exports.saveCallstack = function(context, header) {
 	return new Promise(function(resolved, rejected) {
-		console.log("thread_trace : ", thread_trace);
 		let act_id_list = Object.keys(header.thread_trace);
 		let insert_array = [];
 		let stackname_array = [];

@@ -658,6 +658,7 @@ module.exports = {
 
 				sql += `(?, 
 				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?), 
+				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?),
 				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?))`;
 				
 				if (index < length) {
@@ -665,7 +666,7 @@ module.exports = {
 				}
 			});
 
-			sql += "ON DUPLICATE KEY UPDATE " +
+			sql += " ON DUPLICATE KEY UPDATE " +
 				"call_count = VALUES(call_count) + 1";
 
 	        context.connection.query(sql, insert, function (err, rows) {
@@ -675,7 +676,7 @@ module.exports = {
 	                console.error(err);
 	                return rejected(error);
 	            }
-
+	            console.log(rows);
 	            return resolved();
 	        });
 	    });
