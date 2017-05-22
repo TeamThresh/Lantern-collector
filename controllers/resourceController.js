@@ -37,7 +37,9 @@ module.exports = {
     },
 
     uploadFromQueue: function (msg) {
-        saveDump(msg);
+        saveDump(msg, function(err) {
+            console.error(err);
+        });
     }
 };
 
