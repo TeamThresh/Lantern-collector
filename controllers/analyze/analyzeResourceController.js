@@ -35,39 +35,30 @@ exports.analyzeResource = function(context, header, resData) {
 				return Promise.resolved;
 			})
 			.then(function() {
-				return new Promise(function(inresolved, inrejected) {
-					// Add CPU usage
-					let total = resData.os.cpu.user 
-							+ resData.os.cpu.nice 
-							+ resData.os.cpu.system 
-							+ resData.os.cpu.idle;
-					let user_rate = (resData.os.cpu.user/total) * 100;
-					// TODO 저장되는 Raw의 %를 몇 %로 할꺼냐 정할 것
-					// Math.floor() : 소수점 버림, 정수형 반환
-					// Math.round() : 소수점 반올림, 정수형 반환
-					// 소수점 버리고 10 단위로 저장
-					let cpu_raw_rate = Math.floor((resData.os.cpu.user/total) * 10) * 10;
-					AnalyzerModel.insertCPU(context, key, user_rate)
-						.then(AnalyzerModel.insertCPURaw(context, key, cpu_raw_rate, resHead.start_time))
-						.then(inresolved)
-						.catch(inrejected)
-				});
+				// Add CPU usage
+				let total = resData.os.cpu.user 
+						+ resData.os.cpu.nice 
+						+ resData.os.cpu.system 
+						+ resData.os.cpu.idle;
+				let user_rate = (resData.os.cpu.user/total) * 100;
+				// TODO 저장되는 Raw의 %를 몇 %로 할꺼냐 정할 것
+				// Math.floor() : 소수점 버림, 정수형 반환
+				// Math.round() : 소수점 반올림, 정수형 반환
+				// 소수점 버리고 10 단위로 저장
+				let cpu_raw_rate = Math.floor((resData.os.cpu.user/total) * 10) * 10;
+				return AnalyzeResourceModel.insertCPU(context, key, user_rate)
+					.then(AnalyzeResourceModel.insertCPURaw(context, key, cpu_raw_rate, resHead.start_time));
 			})
 			.then(function() {
 				// Add Memory usage
-				return new Promise(function(inresolved, inrejected) {
-					let mem_rate = (resData.app.memory.alloc/resData.app.memory.max) * 100;
-					// TODO 저장되는 Raw의 %를 몇 %로 할꺼냐 정할 것
-					// Math.floor() : 소수점 버림, 정수형 반환
-					// Math.round() : 소수점 반올림, 정수형 반환
-					// 소수점 버리고 10 단위로 저장
-					let mem_raw_rate = Math.floor((resData.app.memory.alloc/resData.app.memory.max) * 10) * 10;
-					AnalyzerModel.insertMemory(context, key, mem_rate)
-						.then(AnalyzerModel
-							.insertMemoryRaw(context, key, mem_raw_rate, resHead.start_time))
-						.then(inresolved)
-						.catch(inrejected);
-				});
+				let mem_rate = (resData.app.memory.alloc/resData.app.memory.max) * 100;
+				// TODO 저장되는 Raw의 %를 몇 %로 할꺼냐 정할 것
+				// Math.floor() : 소수점 버림, 정수형 반환
+				// Math.round() : 소수점 반올림, 정수형 반환
+				// 소수점 버리고 10 단위로 저장
+				let mem_raw_rate = Math.floor((resData.app.memory.alloc/resData.app.memory.max) * 10) * 10;
+				return AnalyzeResourceModel.insertMemory(context, key, mem_rate)
+					.then(AnalyzeResourceModel.insertMemoryRaw(context, key, mem_raw_rate, resHead.start_time));
 			})
 			.then(function() {
 				// Callstack saving
@@ -81,23 +72,23 @@ exports.analyzeResource = function(context, header, resData) {
 							header.thread_trace[key][thread.thread_name] = {};
 						trace_array = thread.trace_list;
 						for (var i=0;i<trace_array.length;i++) {
-							let words = trace_array[i].trace_content.split('(')[0].split('.')
+							let words = trace_array[i].split('(')[0].split('.')
 							let funcname = words[words.length-1];
 							if (i==0) {
 								uplevel_trace_content = null
 							} else {
-								uplevel_trace_content = trace_array[i-1].trace_content;
+								uplevel_trace_content = trace_array[i-1];
 							}
 
 							if (i==trace_array.length-1) {
 								downlevel_trace_content = null;
 							} else {
-								downlevel_trace_content = trace_array[i+1].trace_content;
+								downlevel_trace_content = trace_array[i+1];
 							}
 
 							if (header.thread_trace[key][thread.thread_name][funcname] == undefined) {
 								header.thread_trace[key][thread.thread_name][funcname] = [{
-									raw : trace_array[i].trace_content,
+									raw : trace_array[i],
 									count : 1,
 									uplevel : uplevel_trace_content,
 									downlevel : downlevel_trace_content
@@ -105,7 +96,7 @@ exports.analyzeResource = function(context, header, resData) {
 							} else {
 								let result = header.thread_trace[key][thread.thread_name][funcname]
 									.some(function (item, idx) {
-									if (item.raw == trace_array[i].trace_content
+									if (item.raw == trace_array[i]
 									&& item.uplevel == uplevel_trace_content 
 									&& item.downlevel == downlevel_trace_content) {
 										item.count += 1;
@@ -117,7 +108,7 @@ exports.analyzeResource = function(context, header, resData) {
 
 								if (!result) {
 									header.thread_trace[key][thread.thread_name][funcname].push({
-										raw : trace_array[i].trace_content,
+										raw : trace_array[i],
 										count : 1,
 										uplevel : uplevel_trace_content,
 										downlevel : downlevel_trace_content
@@ -125,42 +116,6 @@ exports.analyzeResource = function(context, header, resData) {
 								}	
 							}
 						}
-						/*
-						thread.trace_list.forEach(function(trace, index) {
-							console.log("type : " , typeof thread.trace_list[index-1])
-							let words = trace.trace_content.split('(')[0].split('.')
-							let funcname = words[words.length-1];
-
-							if (header.thread_trace[key][thread.thread_name][funcname] == undefined) {
-								header.thread_trace[key][thread.thread_name][funcname] = [{
-									raw : trace.trace_content,
-									count : 1,
-									uplevel : JSON.parse(thread.trace_list[index-1]).trace_content == undefined
-									 ? null : JSON.parse(thread.trace_list[index-1]).trace_content
-								}];
-							} else {
-								let result = header.thread_trace[key][thread.thread_name][funcname]
-									.some(function (item, idx) {
-									if (item.raw == trace.trace_content
-									&& item.uplevel == JSON.parse(thread.trace_list[index-1]).trace_content) {
-										item.count += 1;
-										return true;
-									} else {
-										return false;
-									}
-								});
-
-								if (!result) {
-									header.thread_trace[key][thread.thread_name][funcname].push({
-										raw : trace.trace_content,
-										count : 1,
-										uplevel : JSON.parse(thread.trace_list[index-1]).trace_content == undefined
-										 ? null : JSON.parse(thread.trace_list[index-1]).trace_content
-									});
-								}	
-							}
-						});
-						*/
 					});
 
 					return inresolved();
@@ -203,13 +158,9 @@ exports.saveCallstack = function(context, header) {
 			});
 		});
 
-		return AnalyzerResourceModel.insertCallstackName(context, stackname_array)
+		return AnalyzeResourceModel.insertCallstackName(context, stackname_array)
 			.then(function() {
-				return new Promise(function(inresolved, inrejected) {
-					AnalyzerResourceModel.insertCallstack(context, insert_array)
-						.then(inresolved)
-						.catch(inrejected);
-				});
+				return AnalyzeResourceModel.insertCallstack(context, insert_array);
 			})
 			.then(resolved)
 			.catch(rejected);

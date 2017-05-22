@@ -19,10 +19,9 @@ module.exports = {
 	            "`cpu_count` = `cpu_count` + 1";
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            //context.connection.release();
@@ -51,10 +50,9 @@ module.exports = {
 	            "`cpu_raw_count` = `cpu_raw_count` + 1";
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            return resolved();
@@ -81,10 +79,9 @@ module.exports = {
 	            "`mem_count` = `mem_count` + 1";
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            //context.connection.release();
@@ -113,10 +110,9 @@ module.exports = {
 	            "`mem_raw_count` = `mem_raw_count` + 1";
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            return resolved();
@@ -163,15 +159,14 @@ module.exports = {
 				}
 			});
 
-			sql += " ON DUPLICATE KEY UPDATE " +
-				"call_count = VALUES(call_count) + 1";
+			sql += ` ON DUPLICATE KEY UPDATE 
+				call_count = VALUES(call_count) + 1`;
 
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 	            return resolved();
 	        });
@@ -201,10 +196,9 @@ module.exports = {
 
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            return resolved();

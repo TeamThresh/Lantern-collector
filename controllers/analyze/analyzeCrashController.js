@@ -25,28 +25,18 @@ exports.analyzeCrash = function(context, header, crashData) {
 					})
 					.then(function(result) {
 						key = result;
-						return new Promise(function(inresolved, inrejected) {
-							// insert crash info
-							AnalyzerCrashModel.insertCrashName(context, key, crashData)
-								.then(inresolved)
-								.catch(inrejected);
-						});
+						// insert crash info
+						return AnalyzeCrashModel.insertCrashName(context, crashHead, crashData);
 					})
 					.then(function() {
-						//return Promise.resolved;
-						// get a key
-						return new Promise(function(inresolved, inrejected) {
-							// insert crash info
-							AnalyzerCrashModel.insertCrash(context, key, crashData)
-								.then(inresolved)
-								.catch(inrejected);
-						});
+						// insert crash info
+						return AnalyzeCrashModel.insertCrash(context, key, crashData)
 					})
 					.then(function() {
-						return AnalyzerCrashModel.insertEventPath(context, crashData);
+						return AnalyzeCrashModel.insertEventPath(context, crashData);
 					})
 					.then(function() {
-						return AnalyzerCrashModel.insertPathLink(context, crashData);
+						return AnalyzeCrashModel.insertPathLink(context, crashData);
 					})
 					.then(function() {
 						// Callstack saving
@@ -60,19 +50,31 @@ exports.analyzeCrash = function(context, header, crashData) {
 								thread.trace_list.forEach(function(trace, index) {
 									let words = trace.split('(')[0].split('.')
 									let funcname = words[words.length-1];
+									if (index==0) {
+										uplevel_trace_content = null
+									} else {
+										uplevel_trace_content = trace_array[index-1];
+									}
+
+									if (index==trace_array.length-1) {
+										downlevel_trace_content = null;
+									} else {
+										downlevel_trace_content = trace_array[index+1];
+									}
 
 									if (crashData.save_trace[thread.thread_name][funcname] == undefined) {
 										crashData.save_trace[thread.thread_name][funcname] = [{
 											raw : trace,
 											count : 1,
-											uplevel : thread.trace_list[index-1] == undefined
-											 ? null : thread.trace_list[index-1]
+											uplevel : uplevel_trace_content,
+											downlevel : downlevel_trace_content
 										}];
 									} else {
 										let result = crashData.save_trace[thread.thread_name][funcname]
 											.some(function (item, idx) {
 											if (item.raw == trace
-											&& item.uplevel == thread.trace_list[index-1]) {
+											&& item.uplevel == uplevel_trace_content 
+											&& item.downlevel == downlevel_trace_content) {
 												item.count += 1;
 												return true;
 											} else {
@@ -84,8 +86,8 @@ exports.analyzeCrash = function(context, header, crashData) {
 											crashData.save_trace[thread.thread_name][funcname].push({
 												raw : trace,
 												count : 1,
-												uplevel : thread.trace_list[index-1] == undefined
-												 ? null : thread.trace_list[index-1]
+												uplevel : uplevel_trace_content,
+												downlevel : downlevel_trace_content
 											});
 										}	
 									}
@@ -108,7 +110,8 @@ exports.analyzeCrash = function(context, header, crashData) {
 										each_array : [crashData.crash_id, thread_name,
 											each_stack.count],
 										stack_name : each_stack.raw,
-										up_stack_name : each_stack.uplevel
+										up_stack_name : each_stack.uplevel,
+										down_stack_name : each_stack.downlevel
 									});
 
 									stackname_array.push([func_name, each_stack.raw]);
@@ -116,13 +119,10 @@ exports.analyzeCrash = function(context, header, crashData) {
 							});
 						});
 
-						return AnalyzerCrashModel.insertCallstackName(context, stackname_array)
+						return require('../../models/analyzeResourceModel').insertCallstackName(context, stackname_array)
 							.then(function() {
-								return new Promise(function(inresolved, inrejected) {
-									AnalyzerCrashModel.insertCrashStack(context, insert_array)
-										.then(inresolved)
-										.catch(inrejected);
-								});
+								
+								return AnalyzeCrashModel.insertCrashStack(context, insert_array)
 							});
 					})
 					.then(function() {
@@ -137,65 +137,6 @@ exports.analyzeCrash = function(context, header, crashData) {
 		            	return rejected(err);
 					});
 			});
-
-		/*
-		// Stacktrace 에서 Caused by가 있는 것 찾기
-		let stacktraceList = crashData.stacktrace.split("\n");
-		// Stacktrace 를 돌면서 Crash 이름, 위치 찾음
-		stacktraceList.forEach(function(line, in_index) {
-			// Cuased by 추출 (crash 이름, 위치)
-			let compareWord = line.slice(0, 9);
-
-			if (compareWord === "Caused by") {
-				let splitedLine = line.split(":");
-				crash_info.crash_name = splitedLine[1].trim();
-				crash_info.crash_location = stacktraceList[in_index+1]
-					.trim()	// 좌우 공백 제거
-					.split(" ")[1];	// at 제거
-
-				// Crash 정보 DB 저장
-	    		AnalyzerModel.getVersionKey(context, crashHead)
-	    			.then(function() {
-						return AnalyzerModel.getActivityKey(context, crashHead);
-					})
-	    			.then(function(key) {
-	    				// get a key
-	    				return new Promise(function(inresolved, inrejected) {
-	    					// insert crash info
-	    					AnalyzerModel.insertCrash(context, key, crash_info)
-	    						.then(inresolved)
-	    						.catch(inrejected);
-	    				});
-	    			})
-	    			.then(function() {
-	    				if (in_index == stacktraceList.length-1) {
-	    					if (isFail) {
-				            	// if need rollback remove comment
-		        				return rejected(isFail)
-					        }
-	        				return resolved();
-				        }
-					})
-					.catch(function(err) {
-						// Occurred an error by server
-						isFail = err;
-			            if (in_index == stacktraceList.length-1) {
-			            	return rejected(err);
-			        	}
-					});
-			} else {
-				if (in_index == stacktraceList.length-1) {
-					// Crash는 발생했으나 parsing 실패한경우
-					if (isFail) {
-		            	// if need rollback remove comment
-	    				return rejected(isFail)
-			        }
-					return resolved();
-		        }
-			}
-			
-		});
-		*/
 	});
 };
 

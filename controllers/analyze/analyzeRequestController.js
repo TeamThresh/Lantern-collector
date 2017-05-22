@@ -15,18 +15,14 @@ exports.analyzeRequest = function(context, header, requestData) {
 				return AnalyzerModel.getActivityKey(context, reqHead);
 			})
 			.then(function(act_host_key) {
-				return new Promise(function(inresolved, inrejected) {
-					// Add host information
-					let host = {
-    					name : requestData.host,
-    					speed : (requestData.response_time - requestData.request_time),
-    					status : requestData.status
-    				};
+				// Add host information
+				let host = {
+					name : requestData.host,
+					speed : (requestData.response_time - requestData.request_time),
+					status : requestData.status
+				};
 
-					return AnalyzerRequestModel.insertOutboundCall(context, act_host_key, host)
-						.then(inresolved)
-						.catch(inrejected)
-				});
+				return AnalyzeRequestModel.insertOutboundCall(context, act_host_key, host)
 			})
 			.then(function() {
 				return resolved();

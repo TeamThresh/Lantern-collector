@@ -1,5 +1,5 @@
 module.exports = {
-	
+
 	/**
 	 * Add crash information and increase the count
 	 * @param context - To get mysql connection on this object
@@ -7,25 +7,25 @@ module.exports = {
 	 * @param crash_info - Crash information
 	 * @return Promise
 	 */
-	insertCrashName : function(context, key, crash_info) {
+	insertCrashName : function(context, app_info, crash_info) {
 		return new Promise(function(resolved, rejected) {
-			var insert = [crash_info.crash_name, crash_info.crash_location,
+			var insert = [app_info.ver_key, crash_info.crash_name, crash_info.crash_location,
 						crash_info.stacktrace, crash_info.crash_time, 
 						crash_info.crash_time, crash_info.crash_time];
-	        var sql = "INSERT INTO crash_raw_table SET " +
-	            "`crash_name` = ?, " +
-	            "`crash_location` = ?, " +
-	            "`crash_stacktrace` = ?, " +
-	            "`first_time` = ?, " +
-	            "`last_time` = ? " +
-	            "ON DUPLICATE KEY UPDATE " +
-	            "`last_time` = ? ";
+	        var sql = `INSERT INTO crash_raw_table SET 
+	        	crash_ver_id = ?,
+	            crash_name = ?, 
+	            crash_location = ?, 
+	            crash_stacktrace = ?, 
+	            first_time = ?, 
+	            last_time = ? 
+	            ON DUPLICATE KEY UPDATE 
+	            last_time = ? `;
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+                    return rejected({ context : context, error : error });
 	            } else if (rows.insertId == 0) {
 	            	let select = [crash_info.crash_name, crash_info.crash_location]
 	            	let sql = "SELECT crash_id FROM crash_raw_table " +
@@ -33,10 +33,9 @@ module.exports = {
 	            		"AND `crash_location` = ? ";
 	            	context.connection.query(sql, select, function(err, rows) {
 	            		if (err) {
-			                var error = new Error("insert failed");
+			                var error = new Error(err);
 			                error.status = 500;
-			                console.error(err);
-			                return rejected(error);
+                    		return rejected({ context : context, error : error });
 			            }
 	            		crash_info.crash_id = rows[0].crash_id;
 		            	return resolved();
@@ -79,10 +78,9 @@ module.exports = {
 	            crash_gps = crash_gps + ? `;
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            return resolved();
@@ -101,28 +99,42 @@ module.exports = {
 			var insert = [];
 	        var sql = "INSERT INTO crash_stack_table " +
 			"(cs_crash_id, cs_thread_name, cs_count, cs_clevel, " +
-			"cs_uplevel) VALUES ";
+			"cs_uplevel, cs_downlevel) VALUES ";
 
 			let length = fullarray.length - 1;
 			fullarray.forEach(function(arr, index) {
-				sql += "(?, " +
-				"(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?), " +
-				"(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?))";
-				insert.push(arr.each_array, arr.stack_name, arr.up_stack_name);
+
+				insert.push(arr.each_array, arr.stack_name);
+				if (arr.up_stack_name != null) {
+					insert.push(arr.up_stack_name);
+				} else {
+					insert.push(arr.stack_name)
+				}
+
+				if (arr.down_stack_name != null) {
+					insert.push(arr.down_stack_name);
+				} else {
+					insert.push(arr.stack_name)
+				}
+
+				sql += `(?,
+				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?), 
+				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?),
+				(SELECT call_id FROM callstack_name_table WHERE callstack_name = ?))`;
+
 				if (index < length) {
 					sql += ",";
 				}
 			});
 
-			sql += "ON DUPLICATE KEY UPDATE " +
-				"cs_count = VALUES(cs_count)";
+			sql += `ON DUPLICATE KEY UPDATE 
+				cs_count = VALUES(cs_count) + 1`;
 
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            return resolved();
@@ -155,10 +167,9 @@ module.exports = {
 
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 	            
 	            if (rows.insertId == 0)
@@ -218,10 +229,9 @@ module.exports = {
 
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 	            return resolved();
 	        });

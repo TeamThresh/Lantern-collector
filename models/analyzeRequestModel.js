@@ -1,5 +1,5 @@
 module.exports = {
-	
+
 	/**
 	 * Add out bound call information and increase the count
 	 * @param context - To get mysql connection on this object
@@ -27,10 +27,9 @@ module.exports = {
 	            "`host_count` = `host_count` + 1";
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            return resolved();

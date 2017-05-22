@@ -1,5 +1,5 @@
 module.exports = {
-	
+
 	/**
 	 * Add user connection time
 	 * @param context - To get mysql connection on this object
@@ -20,10 +20,9 @@ module.exports = {
 
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            if (rows.insertId == 0)

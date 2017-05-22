@@ -33,29 +33,22 @@ exports.analyzeRender = function(context, header, rendData) {
 				.then(function(result) {
 					// get a key
 					key = result;
-					return new Promise(function(inresolved, inrejected) {
-						// increase user count
-						AnalyzerModel.insertCount(context, key, header.retention)
-							.then(inresolved)
-							.catch(inrejected);
-					});
+					
+					// increase user count
+					return AnalyzerModel.insertCount(context, key, header.retention)
 				})
 				.then(function() {
 					if (rendHead.before_activity === undefined) {
 						return Promise.resolved;
 					}
 					// Add activity link
-					return AnalyzerRenderModel.insertLink(context, key, rendHead);
+					return AnalyzeRenderModel.insertLink(context, key, rendHead);
 				})
 				.then(function() {
-					return new Promise(function(inresolved, inrejected) {
-						// Add UI Rendering Speed
-						rendHead.ui_speed = rendHead.lifecycle_end - rendHead.lifecycle_start;
-						
-						AnalyzerRenderModel.insertRender(context, key, rendHead)
-							.then(inresolved)
-							.catch(inrejected)
-					});
+					// Add UI Rendering Speed
+					rendHead.ui_speed = rendHead.lifecycle_end - rendHead.lifecycle_start;
+					
+					return AnalyzeRenderModel.insertRender(context, key, rendHead)
 				})
 				.then(function() {
 					// link 계산을 위해 before key를 저장

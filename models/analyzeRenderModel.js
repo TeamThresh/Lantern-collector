@@ -21,8 +21,7 @@ module.exports = {
 	            if (err) {
 	                var error = new Error("insert failed");
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            return resolved();
@@ -48,10 +47,9 @@ module.exports = {
 	            "`link_count` = `link_count` + 1";
 	        context.connection.query(sql, insert, function (err, rows) {
 	            if (err) {
-	                var error = new Error("insert failed");
+	                var error = new Error(err);
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            return resolved();

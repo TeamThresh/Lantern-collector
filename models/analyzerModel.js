@@ -24,7 +24,6 @@ module.exports = {
 	            if (err) {
 	                var error = new Error("db failed");
 	                error.status = 500;
-	                console.error(err);
 	                return rejected(error);
 	            } else if (rows.length == 0) {
 	            	require('./analyzerModel')
@@ -71,7 +70,6 @@ module.exports = {
 	            	} else {
 		                var error = new Error(err.Error);
 		                error.status = 500;
-		                //console.error(err);
 		                return rejected(error);
 		            }
 	            } else if (rows.insertId) {
@@ -101,7 +99,6 @@ module.exports = {
 	            if (err) {
 	                var error = new Error("db failed");
 	                error.status = 500;
-	                console.error(err);
 	                return rejected(error);
 	            } else if (rows.length == 0) {
 	            	require('./analyzerModel')
@@ -138,8 +135,7 @@ module.exports = {
 	            if (err) {
 	                var error = new Error("db failed");
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            } else if (rows.insertId) {
 	            	key = rows.insertId;
 	            }
@@ -169,8 +165,7 @@ module.exports = {
 	            if (err) {
 	                var error = new Error("insert failed");
 	                error.status = 500;
-	                console.error(err);
-	                return rejected(error);
+	                return rejected({ context : context, error : error });
 	            }
 
 	            //context.connection.release();

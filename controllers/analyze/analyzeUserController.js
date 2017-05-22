@@ -10,11 +10,7 @@ exports.addUserConnect = function(context, header) {
 		AnalyzerModel
 			.getVersionKey(context, userHeader)
 			.then(function() {
-				return new Promise(function(inresolved, inrejected) {
-					AnalyzerUserModel.insertUserConnection(context, userHeader)
-						.then(inresolved)
-						.catch(inrejected);
-				});
+				return AnalyzeUserModel.insertUserConnection(context, userHeader);
 			})
 			.then(function(retention) {
 				// 복귀 유저 여부 반환

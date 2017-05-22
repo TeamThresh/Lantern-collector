@@ -39,8 +39,6 @@ console.log(header.uuid);
         				return resolved(context);
         			})
         			.catch(function(err) {
-        				context.connection.rollback();
-						mysqlSetting.releaseConnection(context);
 						return rejected(err);
         			});
         	});
@@ -52,8 +50,6 @@ console.log(header.uuid);
         		length = obj.data.length;
         		dumpSavingLooper(context, obj.data, header, function(err) {
         			if (err) {
-        				context.connection.rollback();
-						mysqlSetting.releaseConnection(context);
 						return rejected(err);
         			}
         			console.log("Looper 반환 완료");
@@ -67,11 +63,10 @@ console.log(header.uuid);
         		AnalyzerResourceController
         			.saveCallstack(context, header)
         			.then(function() {
+        				console.log("저장 완료");
         				return resolved(context);
         			})
         			.catch(function(err) {
-        				context.connection.rollback();
-						mysqlSetting.releaseConnection(context);
 						return rejected(err);
         			});
         	});
@@ -81,8 +76,16 @@ console.log(header.uuid);
 	        return callback(null);
 	    })
     	.catch(function(err) {
-	        return callback(err);
-	    });
+            if (err.context) {
+                mysqlSetting.rollbackTransaction(err.context)
+                    .then(mysqlSetting.releaseConnection)
+                    .then(function() {
+                        return callback(err.error);
+                    });
+            } else {
+                callback(err);
+            }
+        })
 };
 
 /**
@@ -107,68 +110,52 @@ function dumpSavingLooper(context, list, header, callback) {
 		    				.analyzeResource(context, header, arr)
 		    				.then(function() {
 		    					return dumpSavingLooper(context, list, header, callback);
-//		    					if (++i == length)
-//		    						return callback();
 		    				})
 		    				.catch(function(err) {
-					            console.error(err);
 					            context.isFail = err;
 					            return callback(context.isFail);
 		    				});
-//	    				return dumpSavingLooper(context, list, header, callback);
 		        		break;
 					case "render": // Analyze rendering data
 				    	AnalyzerRenderController
 				    		.analyzeRender(context, header, arr)
 				    		.then(function() {
 				    			return dumpSavingLooper(context, list, header, callback);
-//		    					if (++i == length)
-//		    						return callback();
 		    				})
 				    		.catch(function(err) {
-					            console.error(err);
 					            context.isFail = err;
 					            return callback(context.isFail);
 				    		});
-//			    		return dumpSavingLooper(context, list, header, callback);
 				    	break;
 					case "crash": // Analyze crash info
 						AnalyzerCrashController
 							.analyzeCrash(context, header, arr)
 							.then(function() {
 								return dumpSavingLooper(context, list, header, callback);
-//		    					if (++i == length)
-//		    						return callback();
 		    				})
 							.catch(function(err) {
-					            console.error(err);
 								context.isFail = err;
 	        					return callback(context.isFail);
 							});
-//						return dumpSavingLooper(context, list, header, callback);
 				        break;
 					case "request": // Analyze network outbound call
 	    				AnalyzerRequestController
 	    					.analyzeRequest(context, header, arr)
 	    					.then(function() {
 	    						return dumpSavingLooper(context, list, header, callback);
-		    					//if (++i == length)
-//		    						return callback();
 		    				})
 	    					.catch(function(err) {
 					            console.error(err);
 	    						context.isFail = err;
 								return callback(context.isFail);
 	    					});
-//    					return dumpSavingLooper(context, list, header, callback);
 				        break;
 				}
 			} else {
 				return callback();
-				console.log("Looper 전부 실행");
 			}
 	
 	} else {
-		console.log("에러 발 생 !!");
+		// 루퍼 종료
 	}
 }
