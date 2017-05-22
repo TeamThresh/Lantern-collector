@@ -78,22 +78,27 @@ exports.analyzeResource = function(context, header, resData) {
 							header.thread_trace[key] = {};
 						if (header.thread_trace[key][thread.thread_name] == undefined)
 							header.thread_trace[key][thread.thread_name] = {};
-						thread.trace_list.forEach(function(trace, index) {
-							let words = trace.split('(')[0].split('.')
+						trace_array = thread.trace_list;
+						for (var i=0;i<trace_array.length;i++) {
+							let words = trace_array[i].trace_content.split('(')[0].split('.')
 							let funcname = words[words.length-1];
+							if (i!=0) {
+								uplevel_trace_content = trace_array[i-1].trace_content;
+							} else {
+								uplevel_trace_content = null;
+							}
 
 							if (header.thread_trace[key][thread.thread_name][funcname] == undefined) {
 								header.thread_trace[key][thread.thread_name][funcname] = [{
-									raw : trace,
+									raw : trace_array[i].trace_content,
 									count : 1,
-									uplevel : thread.trace_list[index-1] == undefined
-									 ? null : thread.trace_list[index-1]
+									uplevel : uplevel_trace_content
 								}];
 							} else {
 								let result = header.thread_trace[key][thread.thread_name][funcname]
 									.some(function (item, idx) {
-									if (item.raw == trace
-									&& item.uplevel == thread.trace_list[index-1]) {
+									if (item.raw == trace_array[i].trace_content
+									&& item.uplevel == uplevel_trace_content) {
 										item.count += 1;
 										return true;
 									} else {
@@ -103,14 +108,49 @@ exports.analyzeResource = function(context, header, resData) {
 
 								if (!result) {
 									header.thread_trace[key][thread.thread_name][funcname].push({
-										raw : trace,
+										raw : trace_array[i].trace_content,
 										count : 1,
-										uplevel : thread.trace_list[index-1] == undefined
-										 ? null : thread.trace_list[index-1]
+										uplevel : uplevel_trace_content
+									});
+								}	
+							}
+						}
+						/*
+						thread.trace_list.forEach(function(trace, index) {
+							console.log("type : " , typeof thread.trace_list[index-1])
+							let words = trace.trace_content.split('(')[0].split('.')
+							let funcname = words[words.length-1];
+
+							if (header.thread_trace[key][thread.thread_name][funcname] == undefined) {
+								header.thread_trace[key][thread.thread_name][funcname] = [{
+									raw : trace.trace_content,
+									count : 1,
+									uplevel : JSON.parse(thread.trace_list[index-1]).trace_content == undefined
+									 ? null : JSON.parse(thread.trace_list[index-1]).trace_content
+								}];
+							} else {
+								let result = header.thread_trace[key][thread.thread_name][funcname]
+									.some(function (item, idx) {
+									if (item.raw == trace.trace_content
+									&& item.uplevel == JSON.parse(thread.trace_list[index-1]).trace_content) {
+										item.count += 1;
+										return true;
+									} else {
+										return false;
+									}
+								});
+
+								if (!result) {
+									header.thread_trace[key][thread.thread_name][funcname].push({
+										raw : trace.trace_content,
+										count : 1,
+										uplevel : JSON.parse(thread.trace_list[index-1]).trace_content == undefined
+										 ? null : JSON.parse(thread.trace_list[index-1]).trace_content
 									});
 								}	
 							}
 						});
+						*/
 					});
 
 					return inresolved();
