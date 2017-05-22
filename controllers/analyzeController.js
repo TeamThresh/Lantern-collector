@@ -61,7 +61,7 @@ console.log(header.uuid);
         	// After Process, 콜스택 저장
         	return new Promise(function(resolved, rejected) {
         		// 실행은 됬지만 트레이스가 없는경우 
-				if (header.thread_trace) {
+				if (header.thread_trace instanceof undefined) {
 					return resolved(context);
 				}
 				
