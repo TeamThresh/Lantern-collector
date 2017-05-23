@@ -38,7 +38,7 @@ module.exports = {
 
     uploadFromQueue: function (msg) {
         saveDump(msg, function(err) {
-            console.error(err);
+            if (err) console.error(err);
         });
     }
 };
@@ -59,7 +59,8 @@ function saveDump(dump, callback) {
         dump.device_info.location = {
             code : city.country.iso_code,
             country_name : city.country.names.en,
-            city_name : city.city.names.en
+            //city_name : city.city.names.en
+            city_name : "seoul"
         };
 
         // 총 실행 횟수

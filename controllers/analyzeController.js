@@ -60,8 +60,8 @@ console.log(header.uuid);
         .then(function(context) {
         	// After Process, 콜스택 저장
         	return new Promise(function(resolved, rejected) {
-        		// 실행은 됬지만 트레이스가 없는경우 
-				if (header.thread_trace instanceof undefined) {
+        		// 실행은 됬지만 트레이스가 없는경우
+				if (!header.thread_trace) {
 					return resolved(context);
 				}
 				
@@ -77,7 +77,7 @@ console.log(header.uuid);
         })
 	    .then(mysqlSetting.commitTransaction)
 	    .then(function(data) {
-	        return callback(null);
+	        return callback();
 	    })
     	.catch(function(err) {
             if (err.context) {
