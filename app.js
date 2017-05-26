@@ -2,6 +2,7 @@ var express = require('express');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
 var compression = require('compression');
+var credentials = require('./credentials');
 
 var routes = require('./routes/index');
 var errors = require('./routes/error');
