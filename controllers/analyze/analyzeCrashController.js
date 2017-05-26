@@ -43,28 +43,28 @@ exports.analyzeCrash = function(context, header, crashData) {
 						return new Promise(function(inresolved, inrejected) {
 							if (crashData.save_trace == undefined)
 								crashData.save_trace = {};
-							crashData.thread_trace.forEach(function(thread) {
+							crashData.res_data.app.thread_trace.forEach(function(thread) {
 								if (crashData.save_trace[thread.thread_name] == undefined)
 									crashData.save_trace[thread.thread_name] = {};
 
 								thread.trace_list.forEach(function(trace, index) {
-									let words = trace.split('(')[0].split('.')
+									let words = trace.trace_content.split('(')[0].split('.')
 									let funcname = words[words.length-1];
 									if (index==0) {
 										uplevel_trace_content = null
 									} else {
-										uplevel_trace_content = trace_array[index-1];
+										uplevel_trace_content = thread.trace_list[index-1].trace_content;
 									}
 
-									if (index==trace_array.length-1) {
+									if (index==thread.trace_list.length-1) {
 										downlevel_trace_content = null;
 									} else {
-										downlevel_trace_content = trace_array[index+1];
+										downlevel_trace_content = thread.trace_list[index+1].trace_content;
 									}
 
 									if (crashData.save_trace[thread.thread_name][funcname] == undefined) {
 										crashData.save_trace[thread.thread_name][funcname] = [{
-											raw : trace,
+											raw : trace.trace_content,
 											count : 1,
 											uplevel : uplevel_trace_content,
 											downlevel : downlevel_trace_content
@@ -72,7 +72,7 @@ exports.analyzeCrash = function(context, header, crashData) {
 									} else {
 										let result = crashData.save_trace[thread.thread_name][funcname]
 											.some(function (item, idx) {
-											if (item.raw == trace
+											if (item.raw == trace.trace_content
 											&& item.uplevel == uplevel_trace_content 
 											&& item.downlevel == downlevel_trace_content) {
 												item.count += 1;
@@ -84,7 +84,7 @@ exports.analyzeCrash = function(context, header, crashData) {
 
 										if (!result) {
 											crashData.save_trace[thread.thread_name][funcname].push({
-												raw : trace,
+												raw : trace.trace_content,
 												count : 1,
 												uplevel : uplevel_trace_content,
 												downlevel : downlevel_trace_content
