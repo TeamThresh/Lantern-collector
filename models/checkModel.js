@@ -3,7 +3,7 @@ var mysqlSetting = require('../models/mysqlSetting');
 var AnalyzerModel = require('./analyzerModel');
 
 exports.checkPackageKey = function(package_name, key, callback) {
-	mysqlSetting.getPool()
+	mysqlSetting.getWritePool()
         .then(mysqlSetting.getConnection)
         .then(mysqlSetting.connBeginTransaction)
         .then(function(context) {
