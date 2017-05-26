@@ -3,23 +3,23 @@
  */
 var credentials = require('../credentials');
 var mysql = require('mysql');
-var pool = mysql.createPool({
-    connectTimeout: 10000,
-    timeout: 10000,
-    aquireTimeout: 10000,
-    host: credentials.mysql.host,
-    port: credentials.mysql.port,
-    user: credentials.mysql.user,
-    password: credentials.mysql.password,
-    database: credentials.mysql.database,
-    connectionLimit: 500,
-    waitForConnections: true,
-    queueLimit: 50
-});
 
-var getPool = function() {
+var poolCluster = mysql.createPoolCluster();
+poolCluster.add('MASTER', credentials.mysql.masterConfig);
+poolCluster.add('SLAVE1', credentials.mysql.slave1Config);
+
+var readPool = poolCluster.of('SLAVE*', 'RR');
+var writePool = poolCluster.of('MASTER', 'RR');
+
+var getReadPool = function() {
     return new Promise(function(resolved, rejected) {
-        return resolved(pool);
+        return resolved(readPool);
+    });
+};
+
+var getWritePool = function() {
+    return new Promise(function(resolved, rejected) {
+        return resolved(writePool);
     });
 };
 
@@ -82,7 +82,8 @@ var releaseConnection = function(context) {
     });
 };
 
-module.exports.getPool = getPool;
+module.exports.getReadPool = getReadPool;
+module.exports.getWritePool = getWritePool;
 module.exports.getConnection = getConnection;
 module.exports.connBeginTransaction = connBeginTransaction;
 module.exports.commitTransaction = commitTransaction;

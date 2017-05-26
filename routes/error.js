@@ -4,7 +4,7 @@
 var errorCode = require('./errorCode');
 
 module.exports = function (err, res, mode) {
-    console.log(err);
+    console.error(err);
     var error;
     err.status == undefined ? error = errorCode[500] : error = errorCode[err.status];
     if (mode === 'development') {

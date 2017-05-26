@@ -28,7 +28,7 @@ exports.saveAnalysisDump = function(obj, callback) {
 	};
 console.log(header.uuid);
 	// TODO 다중 쿼리로 변경할 필요가 있음
-	mysqlSetting.getPool()
+	mysqlSetting.getWritePool()
         .then(mysqlSetting.getConnection)
         .then(mysqlSetting.connBeginTransaction)
         .then(function(context) {
@@ -61,7 +61,7 @@ console.log(header.uuid);
         	// After Process, 콜스택 저장
         	return new Promise(function(resolved, rejected) {
         		// 실행은 됬지만 트레이스가 없는경우 
-				if (header.thread_trace instanceof undefined) {
+				if (!header.thread_trace) {
 					return resolved(context);
 				}
 				
@@ -77,7 +77,7 @@ console.log(header.uuid);
         })
 	    .then(mysqlSetting.commitTransaction)
 	    .then(function(data) {
-	        return callback(null);
+	        return callback();
 	    })
     	.catch(function(err) {
             if (err.context) {

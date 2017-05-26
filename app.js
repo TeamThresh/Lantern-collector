@@ -16,6 +16,16 @@ app.use(compression())
 
 app.use(logger('dev'));
 
+
+// MongoDB module
+var mongoose = require('mongoose');
+
+mongoose.connect(credentials.replHosts, credentials.mongooseOption, function(err) {
+	if (err) throw err;
+	console.log("MongoDB connect complete");
+});
+
+
 // Route Handlers
 app.use(routes());
 
