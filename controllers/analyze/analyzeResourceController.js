@@ -72,23 +72,23 @@ exports.analyzeResource = function(context, header, resData) {
 							header.thread_trace[key][thread.thread_name] = {};
 						trace_array = thread.trace_list;
 						for (var i=0;i<trace_array.length;i++) {
-							let words = trace_array[i].split('(')[0].split('.')
+							let words = trace_array[i].trace_content.split('(')[0].split('.')
 							let funcname = words[words.length-1];
 							if (i==0) {
 								uplevel_trace_content = null
 							} else {
-								uplevel_trace_content = trace_array[i-1];
+								uplevel_trace_content = trace_array[i-1].trace_content;
 							}
 
 							if (i==trace_array.length-1) {
 								downlevel_trace_content = null;
 							} else {
-								downlevel_trace_content = trace_array[i+1];
+								downlevel_trace_content = trace_array[i+1].trace_content;
 							}
 
 							if (header.thread_trace[key][thread.thread_name][funcname] == undefined) {
 								header.thread_trace[key][thread.thread_name][funcname] = [{
-									raw : trace_array[i],
+									raw : trace_array[i].trace_content,
 									count : 1,
 									uplevel : uplevel_trace_content,
 									downlevel : downlevel_trace_content
@@ -96,7 +96,7 @@ exports.analyzeResource = function(context, header, resData) {
 							} else {
 								let result = header.thread_trace[key][thread.thread_name][funcname]
 									.some(function (item, idx) {
-									if (item.raw == trace_array[i]
+									if (item.raw == trace_array[i].trace_content
 									&& item.uplevel == uplevel_trace_content 
 									&& item.downlevel == downlevel_trace_content) {
 										item.count += 1;
@@ -108,7 +108,7 @@ exports.analyzeResource = function(context, header, resData) {
 
 								if (!result) {
 									header.thread_trace[key][thread.thread_name][funcname].push({
-										raw : trace_array[i],
+										raw : trace_array[i].trace_content,
 										count : 1,
 										uplevel : uplevel_trace_content,
 										downlevel : downlevel_trace_content
