@@ -190,24 +190,45 @@ module.exports = {
 		return new Promise(function(resolved, rejected) {
 			var insert = [];
 	        var sql = `INSERT INTO eventpath_crash_table 
-	        	(ec_crash_id, ec_event_id, ec_uplevel)
+	        	(ec_crash_id, ec_event_id, ec_uplevel, ec_downlevel)
 				VALUES `;
 
-			let path_length = crash_info.event_path.length - 1;
-			crash_info.event_path.forEach((each, index) => {
+			let isFirst = true;
+
+			let uplevel_event;
+			while (crash_info.event_path.length > 0) {
 				
+				let index = crash_info.event_path.length - 1;
+				let each = crash_info.event_path.pop();
+
 				insert.push(crash_info.crash_id, 
 						each.class_name, each.method_name, each.line_num);
-				if (index != 0) {
+
+				if (isFirst) {
 					insert.push(
+						each.class_name,
+						each.method_name,
+						each.line_num,
 						crash_info.event_path[index-1].class_name,
 						crash_info.event_path[index-1].method_name,
 						crash_info.event_path[index-1].line_num);
+					isFirst = false;
+				} else if (index == 0) {
+					insert.push(
+						uplevel_event.class_name,
+						uplevel_event.method_name,
+						uplevel_event.line_num,
+						each.class_name,
+						each.method_name,
+						each.line_num);
 				} else {
 					insert.push(
-						crash_info.event_path[index].class_name,
-						crash_info.event_path[index].method_name,
-						crash_info.event_path[index].line_num);
+						uplevel_event.class_name,
+						uplevel_event.method_name,
+						uplevel_event.line_num,
+						crash_info.event_path[index-1].class_name,
+						crash_info.event_path[index-1].method_name,
+						crash_info.event_path[index-1].line_num);
 				}
 
 				sql += `(?, 
@@ -218,12 +239,18 @@ module.exports = {
 					(SELECT event_id FROM eventpath_table 
 						WHERE class_name = ?
 						AND method_name = ?
+						AND line_num = ?),
+					(SELECT event_id FROM eventpath_table 
+						WHERE class_name = ?
+						AND method_name = ?
 						AND line_num = ?) )`;
 
-				if (index < path_length) {
+				if (index > 0) {
 					sql += ",";
 				}
-			});
+				
+				uplevel_event = each;
+			}
 
 			sql += `ON DUPLICATE KEY UPDATE 
 				ec_count = ec_count + 1`;
