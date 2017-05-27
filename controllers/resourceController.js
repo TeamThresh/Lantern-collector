@@ -22,7 +22,7 @@ module.exports = {
         };
 
         // Client IP 가져옴
-        var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        var ip = req.headers['X-Real-IP'] || req.connection.remoteAddress;
         //(IPv6 to IPv4 format)
         ip = ip.split(':'); 
         data.dump.device_info.ip = ip[ip.length-1];
@@ -38,7 +38,7 @@ module.exports = {
 
     uploadFromQueue: function (msg) {
         saveDump(msg, function(err) {
-            console.error(err);
+            if (err) console.error(err);
         });
     }
 };
