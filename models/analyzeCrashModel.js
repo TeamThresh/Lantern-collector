@@ -57,13 +57,14 @@ module.exports = {
 	 */
 	insertCrash : function(context, key, crash_info) {
 		return new Promise(function(resolved, rejected) {
-			var insert = [key, crash_info.crash_id, 
-				crash_info.system_service.wifi,
-				crash_info.system_service.mobile_network,
-				crash_info.system_service.gps,
-				crash_info.system_service.wifi,
-				crash_info.system_service.mobile_network,
-				crash_info.system_service.gps];
+			var insert = [key, 
+				crash_info.crash_id, 
+				crash_info.res_data.system_service.wifi,
+				crash_info.res_data.system_service.mobile_network,
+				crash_info.res_data.system_service.gps,
+				crash_info.res_data.system_service.wifi,
+				crash_info.res_data.system_service.mobile_network,
+				crash_info.res_data.system_service.gps];
 	        var sql = `INSERT INTO crash_table SET 
 	            crash_act_id = ?, 
 	            crash_raw_id = ?, 
