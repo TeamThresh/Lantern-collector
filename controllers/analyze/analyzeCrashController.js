@@ -33,7 +33,10 @@ exports.analyzeCrash = function(context, header, crashData) {
 						return AnalyzeCrashModel.insertCrash(context, key, crashData)
 					})
 					.then(function() {
-						return AnalyzeCrashModel.insertEventPath(context, crashData);
+						if (crash_info.event_path.length > 0) 
+							return AnalyzeCrashModel.insertEventPath(context, crashData);
+						else 
+							return Promise.resolved;
 					})
 					.then(function() {
 						return AnalyzeCrashModel.insertPathLink(context, crashData);
